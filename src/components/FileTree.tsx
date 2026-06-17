@@ -18,6 +18,7 @@ export interface TreeNode {
 
 function buildTree(files: { path: string }[]): TreeNode[] {
     const root: TreeNode[] = [];
+    const nodeMap = new Map<string, TreeNode>();
 
     files.forEach(file => {
         const cleanPath = file.path.startsWith("/") ? file.path.substring(1) : file.path;
@@ -30,7 +31,7 @@ function buildTree(files: { path: string }[]): TreeNode[] {
             currentPath += (currentPath === "" ? "" : "/") + part;
             const isFolder = index < parts.length - 1;
             
-            let existingNode = currentLevel.find(n => n.name === part);
+            let existingNode = nodeMap.get(currentPath);
             
             if (!existingNode) {
                 existingNode = {
@@ -39,6 +40,7 @@ function buildTree(files: { path: string }[]): TreeNode[] {
                     isFolder: isFolder,
                     children: isFolder ? [] : undefined
                 };
+                nodeMap.set(currentPath, existingNode);
                 currentLevel.push(existingNode);
             }
             
