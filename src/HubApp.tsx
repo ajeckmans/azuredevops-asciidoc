@@ -29,8 +29,9 @@ export default function HubApp() {
                 }
 
                 const reposToScan: any[] = [];
+                const scannedIdsSet = new Set(globalState.scannedRepoIds);
                 for (const repo of allRepos) {
-                    if (needsFullScan || !globalState.scannedRepoIds.includes(repo.id)) {
+                    if (needsFullScan || !scannedIdsSet.has(repo.id)) {
                         reposToScan.push(repo);
                     }
                 }
