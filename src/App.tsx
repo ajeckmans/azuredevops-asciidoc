@@ -1,6 +1,8 @@
 import * as React from "react";
 
 import { Header } from "azure-devops-ui/Header";
+import { Surface, SurfaceBackground } from "azure-devops-ui/Surface";
+import { Page } from "azure-devops-ui/Page";
 import { DevOpsService } from "./services/DevOpsService";
 import { FileTree } from "./components/FileTree";
 import { AsciiDocRenderer } from "./components/AsciiDocRenderer";
@@ -91,19 +93,21 @@ const App: React.FC = () => {
 
     return (
         <div className="flex-grow flex-column" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+<Surface background={SurfaceBackground.neutral}>
+<Page className="flex-grow flex-column">
             <div style={{ display: "flex", flex: 1, overflow: "hidden", borderTop: "1px solid #eaeaea" }}>
-                <div style={{ width: "300px", flexShrink: 0, overflow: "auto", borderRight: "1px solid #eaeaea", backgroundColor: "#faf9f8" }}>
+                <div style={{ width: "300px", flexShrink: 0, overflow: "auto", borderRight: "1px solid #eaeaea",  }}>
                     {loading ? (
                         <div style={{ padding: "16px" }}>Loading files...</div>
                     ) : (
                         <FileTree files={files} threads={threads} selectedFile={selectedFile} onFileSelected={handleFileSelected} onAddComment={handleAddComment} />
                     )}
                 </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "#f3f2f1" }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden",  }}>
                     {selectedFile ? (
                         <div style={{ flex: 1, overflow: "auto", padding: "16px", display: "flex", flexDirection: "column" }}>
                             <div style={{ 
-                                backgroundColor: "white", 
+                                background: "var(--component-bg, white)",
                                 borderRadius: "4px", 
                                 boxShadow: "0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108)",
                                 display: "flex",
@@ -123,7 +127,7 @@ const App: React.FC = () => {
 
                                 <div style={{ display: "flex", flexDirection: "column" }}>
                                 {fileThreads.map(thread => (
-                                    <div key={thread.id} style={{ margin: "16px 16px 0 16px", padding: "12px 16px", border: "1px solid #eaeaea", backgroundColor: "#faf9f8", borderRadius: "2px" }}>
+                                    <div key={thread.id} style={{ margin: "16px 16px 0 16px", padding: "12px 16px", border: "1px solid #eaeaea", background: "var(--palette-neutral-4, #faf9f8)", borderRadius: "2px" }}>
                                         {thread.comments.map((comment: any, index: number) => (
                                             <div key={comment.id} style={{ display: "flex", flexDirection: "column", paddingBottom: "16px", marginBottom: index < thread.comments.length - 1 ? "16px" : "12px", borderBottom: index < thread.comments.length - 1 ? "1px solid #eaeaea" : "none" }}>
                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -155,7 +159,7 @@ const App: React.FC = () => {
                                             <input 
                                                 id={`reply-box-${thread.id}`}
                                                 type="text"
-                                                style={{ flex: 1, padding: "6px 12px", border: "1px solid #c8c8c8", borderRadius: "2px", fontSize: "14px", backgroundColor: "white", outline: "none", fontFamily: "inherit" }}
+                                                style={{ flex: 1, padding: "6px 12px", border: "1px solid var(--palette-neutral-20, #c8c8c8)", borderRadius: "2px", fontSize: "14px", background: "var(--component-bg, white)", color: "var(--text-primary-color, #333)", outline: "none", fontFamily: "inherit" }}
                                                 placeholder="Write a reply..."
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') {
@@ -168,7 +172,7 @@ const App: React.FC = () => {
                                                 }}
                                             />
                                             <button 
-                                                style={{ backgroundColor: "#f3f2f1", color: "#333", border: "1px solid #c8c8c8", padding: "5px 16px", borderRadius: "2px", marginLeft: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}
+                                                style={{ background: "var(--palette-neutral-4, #f3f2f1)", color: "var(--text-primary-color, #333)", border: "1px solid var(--palette-neutral-20, #c8c8c8)", padding: "5px 16px", borderRadius: "2px", marginLeft: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}
                                                 onClick={() => {
                                                     const input = document.getElementById(`reply-box-${thread.id}`) as HTMLInputElement;
                                                     if (input && input.value) {
@@ -184,10 +188,10 @@ const App: React.FC = () => {
                                 ))}
 
                                 {addingCommentPath === selectedFile && (
-                                    <div style={{ margin: "16px 16px 0 16px", padding: "12px 16px", border: "1px solid #0078d4", backgroundColor: "white", borderRadius: "2px", boxShadow: "0 0 4px rgba(0,120,212,0.3)" }}>
+                                    <div style={{ margin: "16px 16px 0 16px", padding: "12px 16px", border: "1px solid var(--palette-primary, #0078d4)", background: "var(--component-bg, white)", borderRadius: "2px", boxShadow: "0 0 4px rgba(0,120,212,0.3)" }}>
                                         <textarea 
                                             id="pr-comment-box"
-                                            style={{ width: "100%", minHeight: "80px", padding: "8px", border: "none", outline: "none", resize: "vertical", fontFamily: "inherit", fontSize: "14px", backgroundColor: "transparent" }}
+                                            style={{ width: "100%", minHeight: "80px", padding: "8px", border: "none", outline: "none", resize: "vertical", fontFamily: "inherit", fontSize: "14px", background: "transparent", color: "var(--text-primary-color, #333)" }}
                                             placeholder="Add a new comment..."
                                             autoFocus
                                         />
@@ -229,6 +233,8 @@ const App: React.FC = () => {
                     )}
                 </div>
             </div>
+        </Page>
+        </Surface>
         </div>
     );
 };

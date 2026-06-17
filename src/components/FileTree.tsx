@@ -101,7 +101,7 @@ const TreeNodeItem: React.FC<{
                     padding: "8px", 
                     paddingLeft: `${depth * 16 + 8}px`,
                     cursor: "pointer",
-                    backgroundColor: node.path === selectedFile ? "#eff6fc" : (hover ? "#f4f4f4" : "transparent"),
+                    background: node.path === selectedFile ? "var(--palette-primary-tint-40, #eff6fc)" : (hover ? "var(--palette-neutral-4, #f4f4f4)" : "transparent"),
                     borderBottom: "1px solid transparent"
                 }}
                 onMouseEnter={() => setHover(true)}
@@ -134,12 +134,12 @@ const TreeNodeItem: React.FC<{
                             justifyContent: "center",
                             fontSize: "14px",
                             fontWeight: "bold",
-                            color: "#333",
-                            backgroundColor: "white",
+                            color: "var(--text-primary-color, #333)",
+                            background: "var(--component-bg, white)",
                             height: "20px"
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f4f4f4"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "var(--palette-neutral-4, #f4f4f4)"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "var(--component-bg, white)"}
                         title="Add comment"
                     >
                         +
