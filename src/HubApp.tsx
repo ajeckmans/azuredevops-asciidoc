@@ -133,6 +133,14 @@ export default function HubApp() {
         return root;
     };
 
+    const repoTrees = React.useMemo(() => {
+        const trees: { [repoId: string]: any } = {};
+        for (const repoId in repoFiles) {
+            trees[repoId] = buildTree(repoFiles[repoId] || []);
+        }
+        return trees;
+    }, [repoFiles]);
+
     const renderTreeNodes = (node: any, repoId: string, depth: number) => {
         const children = Object.values(node.children || {}).sort((a: any, b: any) => {
             if (a.isFolder === b.isFolder) return a.name.localeCompare(b.name);
@@ -196,7 +204,7 @@ export default function HubApp() {
                     ) : (
                         repos.map(repo => {
                             const isExpanded = expandedNodes[repo.id];
-                            const tree = buildTree(repoFiles[repo.id] || []);
+                            const tree = repoTrees[repo.id] || buildTree([]);
                             
                             return (
                                 <div key={repo.id}>
