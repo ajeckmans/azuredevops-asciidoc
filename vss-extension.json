@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "asciidoc",
     "name": "AsciiDoc PR Viewer",
-    "version": "1.0.11",
+    "version": "1.0.20",
     "publisher": "ajeckmans",
     "targets": [
         {
@@ -28,6 +28,17 @@
             "properties": {
                 "name": "AsciiDoc",
                 "uri": "dist/index.html"
+            }
+        },
+        {
+            "id": "asciidoc-hub",
+            "type": "ms.vss-web.hub",
+            "targets": [
+                "ms.vss-code-web.code-hub-group"
+            ],
+            "properties": {
+                "name": "AsciiDoc",
+                "uri": "dist/hub.html"
             }
         }
     ],

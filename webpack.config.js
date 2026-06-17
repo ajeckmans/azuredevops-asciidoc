@@ -3,9 +3,12 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
     target: "web",
-    entry: "./src/index.tsx",
+    entry: {
+        main: "./src/index.tsx",
+        hub: "./src/hub.tsx"
+    },
     output: {
-        filename: "bundle.js",
+        filename: "[name].js",
         path: path.resolve(__dirname, "dist"),
         clean: true
     },
@@ -28,7 +31,14 @@ module.exports = {
     },
     plugins: [
         new HtmlWebpackPlugin({
-            template: "./src/index.html"
+            filename: "index.html",
+            template: "./src/index.html",
+            chunks: ["main"]
+        }),
+        new HtmlWebpackPlugin({
+            filename: "hub.html",
+            template: "./src/hub.html",
+            chunks: ["hub"]
         })
     ]
 };

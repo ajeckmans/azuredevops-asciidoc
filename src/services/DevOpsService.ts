@@ -106,4 +106,108 @@ export class DevOpsService {
 
         await gitClient.createComment(comment, repositoryId, prId, threadId, projectName);
     }
+
+    public static async getRepositories(projectName: string): Promise<any[]> {
+        const gitClient = getClient(GitRestClient);
+        return await gitClient.getRepositories(projectName);
+    }
+
+    public static async getGlobalRepoState(): Promise<any> {
+        try {
+            const dataService = await SDK.getService<any>("ms.vss-features.extension-data-service");
+            const dataManager = await dataService.getExtensionDataManager(SDK.getExtensionContext().id, await SDK.getAccessToken());
+            return await dataManager.getValue("global-repo-state-v1", { scopeType: "Default" });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    public static async setGlobalRepoState(state: any): Promise<void> {
+        try {
+            const dataService = await SDK.getService<any>("ms.vss-features.extension-data-service");
+            const dataManager = await dataService.getExtensionDataManager(SDK.getExtensionContext().id, await SDK.getAccessToken());
+            await dataManager.setValue("global-repo-state-v1", state, { scopeType: "Default" });
+        } catch (e) {
+            // Ignore write errors
+        }
+    }
+
+    public static async getRepoAsciiDocFiles(repositoryId: string, projectName: string, defaultBranch: string): Promise<any[]> {
+        if (!defaultBranch) {
+            // Empty repo
+            return [];
+        }
+
+        const gitClient = getClient(GitRestClient);
+        const branchName = defaultBranch.replace("refs/heads/", "");
+        
+        let commitId = "";
+        try {
+            const branches = await gitClient.getBranches(repositoryId, projectName);
+            const branchStat = branches.find(b => b.name === branchName || b.name === `refs/heads/${branchName}` || b.name.endsWith(branchName));
+            if (!branchStat) {
+                return [];
+            }
+            commitId = branchStat.commit.commitId;
+        } catch (e: any) {
+            return [];
+        }
+
+        const cacheKey = `asciidoc-tree-v2-${repositoryId}`;
+        let dataManager: any = null;
+        try {
+            const dataService = await SDK.getService<any>("ms.vss-features.extension-data-service");
+            dataManager = await dataService.getExtensionDataManager(SDK.getExtensionContext().id, await SDK.getAccessToken());
+            const cached = await dataManager.getValue(cacheKey, { scopeType: "Default" });
+            if (cached && cached.commitId === commitId && commitId !== "") {
+                return cached.items;
+            }
+        } catch (e) {
+            // Ignore cache read errors (404 expected on first run)
+        }
+
+        try {
+            const items = await gitClient.getItems(
+                repositoryId,
+                projectName,
+                "/",
+                120 as any, // Full
+                true,
+                false,
+                false,
+                true,
+                { versionType: 2, version: commitId, versionOptions: 0 } as any // Commit
+            );
+
+            const adocItems = items.filter(item => 
+                !item.isFolder && 
+                (item.path.toLowerCase().endsWith(".adoc") || item.path.toLowerCase().endsWith(".asciidoc"))
+            );
+
+            if (dataManager && commitId !== "") {
+                try {
+                    await dataManager.setValue(cacheKey, { commitId, items: adocItems }, { scopeType: "Default" });
+                } catch (e) {
+                    // Ignore cache write errors
+                }
+            }
+
+            return adocItems;
+        } catch (e: any) {
+            return [];
+        }
+    }
+
+    public static async getRepoFileContent(repositoryId: string, projectName: string, path: string, branchName: string = "main"): Promise<string> {
+        const gitClient = getClient(GitRestClient);
+        try {
+            return await gitClient.getItemText(repositoryId, path, projectName, undefined, undefined, undefined, undefined, undefined, { versionType: 0, version: branchName, versionOptions: 0 } as any);
+        } catch (e) {
+            try {
+                return await gitClient.getItemText(repositoryId, path, projectName, undefined, undefined, undefined, undefined, undefined, { versionType: 0, version: "master", versionOptions: 0 } as any);
+            } catch (e2) {
+                return "Error loading file content.";
+            }
+        }
+    }
 }

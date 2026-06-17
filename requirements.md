@@ -23,3 +23,11 @@ This document tracks all the requested features and requirements for the AsciiDo
 - [x] **Tech Stack**: Use React, TypeScript, Webpack, and the `azure-devops-extension-api` / `azure-devops-ui` libraries.
 - [x] **Marketplace Updates**: Increment the `version` in `vss-extension.json` for new features so the extension updates automatically across shared organizations without requiring manual re-installation.
 - [x] **Inspiration Reference**: Use `ajeckmans/format-check-task` as a structural inspiration for building extensions.
+
+## Project Hub Tab (AsciiDoc Repository Viewer)
+- [x] **New Hub Tab**: Introduce a project-level "AsciiDoc" Hub tab under the Repos section to view AsciiDoc files across all repositories.
+- [x] **Multi-Repo File Tree**: Display a top-level node for each repository, with a nested file tree for the `.adoc` files in their `main` (default) branch.
+- [x] **Empty Repo Filtering**: Repositories that do not contain AsciiDoc files on their default branch must be completely hidden from the UI to avoid clutter.
+- [x] **Global Background Caching**: To achieve empty repo filtering without crippling the API or spamming the browser console with restricted access errors, the extension must maintain a global, project-wide cache using `ExtensionDataService`.
+- [x] **Hourly Auto-Scan**: The global cache must be automatically refreshed once every hour by the first user who opens the page, running a background scan of all repositories.
+- [x] **Smart New Repo Detection**: The caching logic must automatically detect newly created repositories and scan them instantly, bypassing the 1-hour global timer.
