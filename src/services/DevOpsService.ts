@@ -19,12 +19,26 @@ export class DevOpsService {
         return cfg.project ? cfg.project.name : (host.project ? host.project.name : "");
     }
 
+    private static dataManagerInstance: any = null;
+
+    private static async getDataManager(): Promise<any> {
+        if (!this.dataManagerInstance) {
+            const dataService = await SDK.getService<any>("ms.vss-features.extension-data-service");
+            this.dataManagerInstance = await dataService.getExtensionDataManager(SDK.getExtensionContext().id, await SDK.getAccessToken());
+        }
+        return this.dataManagerInstance;
+    }
+
+    private static getCommitIdFromPr(pr: any): string {
+        return pr.lastMergeSourceCommit ? pr.lastMergeSourceCommit.commitId : pr.lastMergeTargetCommit.commitId;
+    }
+
     public static async getAsciiDocFiles(repositoryId: string, projectName: string): Promise<any[]> {
         const gitClient = getClient(GitRestClient);
         const prId = await this.getPullRequestId();
         const pr = await gitClient.getPullRequestById(prId, projectName);
         
-        const commitId = pr.lastMergeSourceCommit ? pr.lastMergeSourceCommit.commitId : pr.lastMergeTargetCommit.commitId;
+        const commitId = this.getCommitIdFromPr(pr);
         
         const items = await gitClient.getItems(
             repositoryId,
@@ -48,7 +62,7 @@ export class DevOpsService {
         const gitClient = getClient(GitRestClient);
         const prId = await this.getPullRequestId();
         const pr = await gitClient.getPullRequestById(prId, projectName);
-        const commitId = pr.lastMergeSourceCommit ? pr.lastMergeSourceCommit.commitId : pr.lastMergeTargetCommit.commitId;
+        const commitId = this.getCommitIdFromPr(pr);
 
         const contentStream = await gitClient.getItemText(
             repositoryId,
@@ -114,8 +128,7 @@ export class DevOpsService {
 
     public static async getGlobalRepoState(): Promise<any> {
         try {
-            const dataService = await SDK.getService<any>("ms.vss-features.extension-data-service");
-            const dataManager = await dataService.getExtensionDataManager(SDK.getExtensionContext().id, await SDK.getAccessToken());
+            const dataManager = await this.getDataManager();
             return await dataManager.getValue("global-repo-state-v1", { scopeType: "Default" });
         } catch (e) {
             return null;
@@ -124,11 +137,10 @@ export class DevOpsService {
 
     public static async setGlobalRepoState(state: any): Promise<void> {
         try {
-            const dataService = await SDK.getService<any>("ms.vss-features.extension-data-service");
-            const dataManager = await dataService.getExtensionDataManager(SDK.getExtensionContext().id, await SDK.getAccessToken());
+            const dataManager = await this.getDataManager();
             await dataManager.setValue("global-repo-state-v1", state, { scopeType: "Default" });
         } catch (e) {
-            // Ignore write errors
+            console.warn("Failed to set global repo state:", e);
         }
     }
 
@@ -150,14 +162,14 @@ export class DevOpsService {
             }
             commitId = branchStat.commit.commitId;
         } catch (e: any) {
+            console.warn(`Failed to get branches for repository ${repositoryId}:`, e);
             return [];
         }
 
         const cacheKey = `asciidoc-tree-v2-${repositoryId}`;
         let dataManager: any = null;
         try {
-            const dataService = await SDK.getService<any>("ms.vss-features.extension-data-service");
-            dataManager = await dataService.getExtensionDataManager(SDK.getExtensionContext().id, await SDK.getAccessToken());
+            dataManager = await this.getDataManager();
             const cached = await dataManager.getValue(cacheKey, { scopeType: "Default" });
             if (cached && cached.commitId === commitId && commitId !== "") {
                 return cached.items;
@@ -194,6 +206,7 @@ export class DevOpsService {
 
             return adocItems;
         } catch (e: any) {
+            console.warn(`Failed to get items for repository ${repositoryId}:`, e);
             return [];
         }
     }

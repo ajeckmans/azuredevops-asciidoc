@@ -62,7 +62,8 @@ export default function HubApp() {
                     await DevOpsService.setGlobalRepoState(globalState);
                 }
 
-                const finalRepos = allRepos.filter(r => globalState.reposWithAsciidoc.includes(r.id));
+                const reposWithAsciidocSet = new Set(globalState.reposWithAsciidoc);
+                const finalRepos = allRepos.filter(r => reposWithAsciidocSet.has(r.id));
                 finalRepos.sort((a, b) => a.name.localeCompare(b.name));
                 setRepos(finalRepos);
 
