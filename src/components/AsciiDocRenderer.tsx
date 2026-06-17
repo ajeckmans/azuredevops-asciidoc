@@ -60,34 +60,51 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, fil
             blocks.forEach((block) => {
                 hljs.highlightElement(block as HTMLElement);
             });
+
+            // Rewrite relative links to point to the correct Azure DevOps URL instead of the extension CDN
+            const links = contentRef.current.querySelectorAll('a');
+            links.forEach((anchor) => {
+                const href = anchor.getAttribute("href");
+                if (href && !href.startsWith("http") && !href.startsWith("#")) {
+                    let resolvedPath = href;
+                    if (!href.startsWith("/")) {
+                        const dir = filePath.substring(0, filePath.lastIndexOf("/"));
+                        resolvedPath = dir + "/" + href;
+                    }
+                    const parts = resolvedPath.split('/');
+                    const stack: string[] = [];
+                    for (const part of parts) {
+                        if (part === '..') {
+                            stack.pop();
+                        } else if (part !== '.' && part !== '') {
+                            stack.push(part);
+                        }
+                    }
+                    const finalPath = "/" + stack.join('/');
+
+                    let newHref = "#" + finalPath;
+                    try {
+                        if (document.referrer) {
+                            const url = new URL(document.referrer);
+                            url.searchParams.set("path", finalPath);
+                            newHref = url.toString();
+                        }
+                    } catch (e) {}
+                    anchor.setAttribute("href", newHref);
+                    anchor.setAttribute("data-internal-path", finalPath);
+                }
+            });
         }
-    }, [htmlContent]);
+    }, [htmlContent, filePath]);
 
     const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
         const anchor = target.closest("a");
         if (anchor && onLinkClick) {
-            const href = anchor.getAttribute("href");
-            if (href && !href.startsWith("http") && !href.startsWith("#")) {
+            const internalPath = anchor.getAttribute("data-internal-path");
+            if (internalPath) {
                 e.preventDefault();
-                // Resolve relative path
-                let resolvedPath = href;
-                if (!href.startsWith("/")) {
-                    const dir = filePath.substring(0, filePath.lastIndexOf("/"));
-                    resolvedPath = dir + "/" + href;
-                }
-                
-                // Normalize path (e.g., handle ./ and ../)
-                const parts = resolvedPath.split('/');
-                const stack: string[] = [];
-                for (const part of parts) {
-                    if (part === '..') {
-                        stack.pop();
-                    } else if (part !== '.' && part !== '') {
-                        stack.push(part);
-                    }
-                }
-                onLinkClick("/" + stack.join('/'));
+                onLinkClick(internalPath);
             }
         }
     };

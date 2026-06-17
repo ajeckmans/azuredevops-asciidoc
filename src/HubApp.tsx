@@ -174,6 +174,16 @@ export default function HubApp() {
         load();
     }, []);
 
+    const handleFileSelected = React.useCallback(async (repoId: string, path: string) => {
+        setSelectedFile({ repoId, path });
+        try {
+            const navService = await SDK.getService<IHostNavigationService>(CommonServiceIds.HostNavigationService);
+            navService.setQueryParams({ repoId: repoId, path: path });
+        } catch (e) {
+            console.error("Failed to update query params", e);
+        }
+    }, []);
+
     React.useEffect(() => {
         async function loadContent() {
             if (selectedFile) {
@@ -292,7 +302,7 @@ export default function HubApp() {
                             onSelect={(event, treeRow) => {
                                 const data = treeRow.data.underlyingItem.data;
                                 if (!data.isFolder) {
-                                    setSelectedFile({ repoId: data.repoId, path: data.path });
+                                    handleFileSelected(data.repoId, data.path);
                                 } else if (!data.isRepo) {
                                     itemProvider.toggle(treeRow.data.underlyingItem);
                                 } else {
@@ -327,7 +337,9 @@ export default function HubApp() {
                                     <AsciiDocRenderer 
                                         content={fileContent} 
                                         filePath={selectedFile.path} 
-                                        onLinkClick={() => {}}
+                                        onLinkClick={(newPath) => {
+                                            handleFileSelected(selectedFile.repoId, newPath);
+                                        }}
                                     />
                                 </div>
                             </div>
