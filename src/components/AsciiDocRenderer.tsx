@@ -58,7 +58,7 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, fil
     };
 
     return (
-        <div style={{ padding: "16px", backgroundColor: "white", flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "16px", background: "var(--component-bg, white)", flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
             <div 
                 className="asciidoc-content" 
                 dangerouslySetInnerHTML={{ __html: htmlContent }} 

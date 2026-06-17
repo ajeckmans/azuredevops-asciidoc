@@ -2,6 +2,8 @@ import * as React from "react";
 import { DevOpsService } from "./services/DevOpsService";
 import { AsciiDocRenderer } from "./components/AsciiDocRenderer";
 import { Icon } from "azure-devops-ui/Icon";
+import { Surface, SurfaceBackground } from "azure-devops-ui/Surface";
+import { Page } from "azure-devops-ui/Page";
 
 export default function HubApp() {
     const [repos, setRepos] = React.useState<any[]>([]);
@@ -182,8 +184,10 @@ export default function HubApp() {
 
     return (
         <div className="flex-grow flex-column" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+            <Surface background={SurfaceBackground.neutral}>
+            <Page className="flex-grow flex-column">
             <div style={{ display: "flex", flex: 1, overflow: "hidden", borderTop: "1px solid #eaeaea" }}>
-                <div style={{ width: "300px", borderRight: "1px solid #eaeaea", display: "flex", flexDirection: "column", backgroundColor: "white", overflowY: "auto" }}>
+                <div style={{ width: "300px", borderRight: "1px solid #eaeaea", display: "flex", flexDirection: "column", background: "var(--component-bg, white)", overflowY: "auto" }}>
                     {loading ? (
                         <div style={{ padding: "16px", color: "#666" }}>{loadingMessage}</div>
                     ) : repos.length === 0 ? (
@@ -202,12 +206,12 @@ export default function HubApp() {
                                             padding: "8px", 
                                             cursor: "pointer",
                                             fontWeight: "600",
-                                            backgroundColor: "white",
+                                            background: "var(--component-bg, white)",
                                             borderBottom: "1px solid #eaeaea",
                                             transition: "background-color 0.2s"
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f4f4f4"}
-                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--palette-neutral-4, #f4f4f4)"}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = "var(--component-bg, white)"}
                                         onClick={() => toggleExpand(repo.id, true)}
                                     >
                                         <div style={{ width: "16px", display: "flex", justifyContent: "center", marginRight: "8px" }}>
@@ -222,11 +226,11 @@ export default function HubApp() {
                         })
                     )}
                 </div>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: "#f3f2f1" }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden"  }}>
                     {selectedFile ? (
                         <div style={{ flex: 1, overflow: "auto", padding: "16px", display: "flex", flexDirection: "column" }}>
                             <div style={{ 
-                                backgroundColor: "white", 
+                                background: "var(--component-bg, white)",
                                 borderRadius: "4px", 
                                 boxShadow: "0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108)",
                                 display: "flex",
@@ -259,6 +263,8 @@ export default function HubApp() {
                     )}
                 </div>
             </div>
+            </Page>
+            </Surface>
         </div>
     );
 }
