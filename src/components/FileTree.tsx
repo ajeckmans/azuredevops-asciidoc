@@ -1,5 +1,11 @@
 import * as React from "react";
-import { Icon } from "azure-devops-ui/Icon";
+import { Tree } from "azure-devops-ui/TreeEx";
+import { TreeItemProvider, ITreeItem, ITreeItemEx } from "azure-devops-ui/Utilities/TreeItemProvider";
+import { ITreeColumn } from "azure-devops-ui/Components/TreeEx/Tree.Props";
+import { renderExpandableTreeCell } from "azure-devops-ui/TreeEx";
+import { ISimpleListCell } from "azure-devops-ui/List";
+import { ObservableValue } from "azure-devops-ui/Core/Observable";
+import { ISimpleTableCell } from "azure-devops-ui/Table";
 
 export interface FileTreeProps {
     files: any[];
@@ -9,16 +15,19 @@ export interface FileTreeProps {
     onAddComment: (path: string) => void;
 }
 
-export interface TreeNode {
-    name: string;
+export interface FileItemData extends ISimpleTableCell {
+    [key: string]: any;
+    name: ISimpleListCell;
     path: string;
     isFolder: boolean;
-    children?: TreeNode[];
+    isComment?: boolean;
+    commentData?: any;
+    threads?: any[];
 }
 
-function buildTree(files: { path: string }[]): TreeNode[] {
-    const root: TreeNode[] = [];
-    const nodeMap = new Map<string, TreeNode>();
+function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<FileItemData>[] {
+    const root: ITreeItem<FileItemData>[] = [];
+    const nodeMap = new Map<string, ITreeItem<FileItemData>>();
 
     files.forEach(file => {
         const cleanPath = file.path.startsWith("/") ? file.path.substring(1) : file.path;
@@ -34,18 +43,70 @@ function buildTree(files: { path: string }[]): TreeNode[] {
             let existingNode = nodeMap.get(currentPath);
             
             if (!existingNode) {
-                existingNode = {
-                    name: part,
-                    path: "/" + currentPath,
-                    isFolder: isFolder,
-                    children: isFolder ? [] : undefined
+                const nodePath = "/" + currentPath;
+                const newNode: ITreeItem<FileItemData> = {
+                    data: {
+                        name: {
+                            text: part,
+                            iconProps: {
+                                iconName: isFolder ? "FabricFolderFill" : "Page",
+                                className: "icon-margin medium",
+                                style: { color: isFolder ? "#dcb67a" : "inherit" }
+                            }
+                        },
+                        path: nodePath,
+                        isFolder: isFolder,
+                    },
+                    expanded: isFolder ? true : undefined,
+                    childItems: isFolder ? [] : undefined
                 };
+                existingNode = newNode;
+                
+                if (!isFolder) {
+                    const fileThreads = threads.filter(t => t.threadContext && t.threadContext.filePath === nodePath);
+                    if (fileThreads.length > 0) {
+                        existingNode.childItems = fileThreads.map(thread => {
+                            const firstComment = thread.comments && thread.comments[0] ? thread.comments[0] : null;
+                            const initials = firstComment?.author?.displayName?.substring(0, 2).toUpperCase() || "U";
+                            
+                            return {
+                                data: {
+                                    name: {
+                                        text: firstComment ? `${firstComment.author.displayName}: ${firstComment.content}` : "Thread",
+                                        textNode: (
+                                            <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                                                <div style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "8px", flexShrink: 0, fontSize: "10px", fontWeight: "bold" }}>
+                                                    {initials}
+                                                </div>
+                                                <span className="text-ellipsis" style={{ flexGrow: 1 }}>
+                                                    {firstComment ? firstComment.content : "Thread"}
+                                                </span>
+                                            </div>
+                                        )
+                                    },
+                                    path: nodePath,
+                                    isFolder: false,
+                                    isComment: true,
+                                    commentData: firstComment,
+                                    threads: thread.comments
+                                }
+                            } as ITreeItem<FileItemData>;
+                        }).filter(item => item.data.commentData !== null);
+                        
+                        if (existingNode.childItems!.length > 0) {
+                            existingNode.expanded = true;
+                        } else {
+                            existingNode.childItems = undefined;
+                        }
+                    }
+                }
+                
                 nodeMap.set(currentPath, existingNode);
                 currentLevel.push(existingNode);
             }
             
-            if (isFolder) {
-                currentLevel = existingNode.children!;
+            if (isFolder && existingNode.childItems) {
+                currentLevel = existingNode.childItems;
             }
         });
     });
@@ -53,175 +114,97 @@ function buildTree(files: { path: string }[]): TreeNode[] {
     return root;
 }
 
-const TreeNodeItem: React.FC<{
-    node: TreeNode;
-    depth: number;
-    threads: any[];
-    selectedFile: string | null;
-    onFileSelected: (path: string) => void;
-    onAddComment: (path: string) => void;
-}> = ({ node, depth, threads, selectedFile, onFileSelected, onAddComment }) => {
-    const [expanded, setExpanded] = React.useState(true);
-    const [hover, setHover] = React.useState(false);
-    const [menuOpen, setMenuOpen] = React.useState(false);
+export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile, onFileSelected, onAddComment }) => {
+    const [itemProvider] = React.useState(new TreeItemProvider<FileItemData>());
 
-    const fileThreads = React.useMemo(() => {
-        return threads.filter(t => t.threadContext && t.threadContext.filePath === node.path);
-    }, [threads, node.path]);
+    React.useEffect(() => {
+        const items = buildTreeItems(files, threads);
+        itemProvider.clear();
+        itemProvider.splice(undefined, [], [{ items }]);
+    }, [files, threads, itemProvider]);
 
-    const toggleExpand = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setExpanded(!expanded);
-    };
+    const columns = React.useMemo((): ITreeColumn<FileItemData>[] => [
+        {
+            id: "name",
+            width: new ObservableValue(-100),
+            hierarchical: true,
+            indentationSize: 16,
+            renderCell: (rowIndex, columnIndex, treeColumn, treeItem) => {
+                const data = treeItem.underlyingItem.data;
+                const isSelected = selectedFile === data.path;
 
-    const handleFileClick = () => {
-        if (node.isFolder) {
-            setExpanded(!expanded);
-        } else {
-            onFileSelected(node.path);
-        }
-    };
-
-    const handleCommentClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setMenuOpen(false);
-        onAddComment(node.path);
-    };
-
-    const toggleMenu = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setMenuOpen(!menuOpen);
-    };
-
-    return (
-        <div>
-            <div 
-                style={{ 
-                    position: "relative",
-                    display: "flex", 
-                    alignItems: "center", 
-                    padding: "8px", 
-                    paddingLeft: `${depth * 16 + 8}px`,
-                    cursor: "pointer",
-                    background: node.path === selectedFile ? "var(--palette-primary-tint-40, #eff6fc)" : (hover ? "var(--palette-neutral-4, #f4f4f4)" : "transparent"),
-                    borderBottom: "1px solid transparent"
-                }}
-                onMouseEnter={() => setHover(true)}
-                onMouseLeave={() => { setHover(false); setMenuOpen(false); }}
-                onClick={handleFileClick}
-            >
-                {node.path === selectedFile && (
-                    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", backgroundColor: "#0078d4" }} />
-                )}
-                <div style={{ width: "16px", display: "flex", justifyContent: "center", marginRight: "4px" }}>
-                    {node.isFolder ? (
-                        <div onClick={toggleExpand}>
-                            <Icon iconName={expanded ? "ChevronDown" : "ChevronRight"} />
-                        </div>
-                    ) : null}
-                </div>
-                <Icon iconName={node.isFolder ? "Folder" : "Page"} style={{ marginRight: "8px", color: node.isFolder ? "#dcb67a" : "inherit", fontSize: "16px" }} />
-                <span style={{ flexGrow: 1, textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", fontSize: "14px", color: "#333" }}>{node.name}</span>
-                
-                {!node.isFolder && hover && (
-                    <div 
-                        onClick={handleCommentClick} 
-                        style={{ 
-                            marginLeft: "8px", 
-                            padding: "0 6px", 
-                            borderRadius: "10px", 
-                            border: "1px solid #c8c8c8",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "14px",
-                            fontWeight: "bold",
-                            color: "var(--text-primary-color, #333)",
-                            background: "var(--component-bg, white)",
-                            height: "20px"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "var(--palette-neutral-4, #f4f4f4)"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = "var(--component-bg, white)"}
-                        title="Add comment"
-                    >
-                        +
-                    </div>
-                )}
-            </div>
-
-            {!node.isFolder && expanded && fileThreads.length > 0 && (
-                <div>
-                    {fileThreads.map((thread: any) => {
-                        const firstComment = thread.comments && thread.comments[0] ? thread.comments[0] : null;
-                        if (!firstComment) return null;
-
-                        return (
-                            <div 
-                                key={thread.id}
-                                style={{ 
-                                    display: "flex", 
-                                    alignItems: "center", 
-                                    padding: "6px 8px 6px 0", 
-                                    paddingLeft: `${(depth + 1) * 16 + 32}px`, // indented past the icon
-                                    cursor: "pointer",
-                                    backgroundColor: "transparent",
-                                    borderBottom: "1px solid transparent"
-                                }}
-                                onClick={() => onFileSelected(node.path)}
-                            >
-                                <div style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "8px", flexShrink: 0, fontSize: "10px", fontWeight: "bold" }}>
-                                    {firstComment.author?.displayName?.substring(0, 2).toUpperCase() || "U"}
-                                </div>
-                                <span style={{ flexGrow: 1, textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", fontSize: "14px", color: "#333" }}>
-                                    {firstComment.content}
-                                </span>
-                                {thread.comments.length > 1 && (
-                                    <span style={{ fontSize: "12px", color: "#666", marginLeft: "8px" }}>
-                                        {thread.comments.length}
+                // Create a clone of the name ISimpleListCell to inject our custom buttons without mutating the base data
+                const nameCell: ISimpleListCell = {
+                    ...data.name,
+                    textClassName: isSelected ? "fontWeightSemiBold" : undefined,
+                    textNode: (
+                        <div className="flex-row flex-center" style={{ width: "100%", justifyContent: "space-between" }}>
+                            <div className="flex-row flex-center text-ellipsis" style={{ overflow: "hidden" }}>
+                                {data.name.textNode || <span className="text-ellipsis">{data.name.text}</span>}
+                            </div>
+                            
+                            <div className="flex-row flex-center flex-noshrink" style={{ position: "absolute", right: "16px", backgroundColor: "var(--component-bg, transparent)" }}>
+                                {data.threads && data.threads.length > 1 && (
+                                    <span className="secondary-text body-s" style={{ marginRight: "8px" }}>
+                                        {data.threads.length}
                                     </span>
                                 )}
+                                {!data.isFolder && !data.isComment && (
+                                    <div 
+                                        className={`bolt-pill flex-row flex-center outlined compact tree-plus-btn ${isSelected ? 'is-selected' : ''}`}
+                                        style={{ cursor: "pointer", width: "24px", height: "24px" }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onAddComment(data.path);
+                                        }}
+                                    >
+                                        <div className="bolt-pill-content text-ellipsis">+</div>
+                                    </div>
+                                )}
                             </div>
-                        );
-                    })}
-                </div>
-            )}
+                        </div>
+                    )
+                };
 
-            {node.isFolder && expanded && node.children && (
-                <div>
-                    {node.children.map(child => (
-                        <TreeNodeItem 
-                            key={child.path} 
-                            node={child} 
-                            depth={depth + 1} 
-                            threads={threads}
-                            selectedFile={selectedFile}
-                            onFileSelected={onFileSelected} 
-                            onAddComment={onAddComment} 
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
+                // We temporarily swap the data out for rendering to pass the dynamically generated textNode
+                const originalName = data.name;
+                data.name = nameCell;
+                
+                const renderedCell = renderExpandableTreeCell(
+                    rowIndex,
+                    columnIndex,
+                    treeColumn,
+                    treeItem
+                );
 
-export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile, onFileSelected, onAddComment }) => {
-    const tree = React.useMemo(() => buildTree(files), [files]);
+                // Restore original
+                data.name = originalName;
+
+                return renderedCell;
+            }
+        }
+    ], [selectedFile, onAddComment]);
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", padding: "8px 0" }}>
-            {tree.map(node => (
-                <TreeNodeItem 
-                    key={node.path} 
-                    node={node} 
-                    depth={0} 
-                    threads={threads}
-                    selectedFile={selectedFile}
-                    onFileSelected={onFileSelected} 
-                    onAddComment={onAddComment} 
-                />
-            ))}
-            {files.length === 0 && <div style={{ padding: "8px" }}>No AsciiDoc files found.</div>}
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%" }}>
+            <style>{`
+                .tree-plus-btn { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+                .bolt-list-row:hover .tree-plus-btn, .tree-plus-btn.is-selected { opacity: 1; pointer-events: auto; }
+            `}</style>
+            <Tree<FileItemData>
+                columns={columns}
+                itemProvider={itemProvider as any}
+                scrollable={false}
+                showHeader={false}
+                showLines={false}
+                singleClickActivation={true}
+                onSelect={(event, treeRow) => {
+                    const data = treeRow.data.underlyingItem.data;
+                    if (!data.isFolder) {
+                        onFileSelected(data.path);
+                    }
+                }}
+            />
         </div>
     );
 };

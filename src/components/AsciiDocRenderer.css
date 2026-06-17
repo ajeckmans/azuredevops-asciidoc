@@ -1,0 +1,158 @@
+.asciidoc-content {
+    color: var(--text-primary-color);
+    background-color: var(--background-color);
+    font-family: inherit;
+    line-height: 1.6;
+}
+
+.asciidoc-content h1,
+.asciidoc-content h2,
+.asciidoc-content h3,
+.asciidoc-content h4,
+.asciidoc-content h5,
+.asciidoc-content h6 {
+    color: var(--text-primary-color);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+}
+
+.asciidoc-content h1 { font-size: 2em; border-bottom: 1px solid var(--palette-neutral-8); padding-bottom: 0.3em; }
+.asciidoc-content h2 { font-size: 1.5em; border-bottom: 1px solid var(--palette-neutral-8); padding-bottom: 0.3em; }
+.asciidoc-content h3 { font-size: 1.25em; }
+.asciidoc-content h4 { font-size: 1.1em; }
+.asciidoc-content h5 { font-size: 1em; }
+.asciidoc-content h6 { font-size: 0.9em; color: var(--text-secondary-color); }
+
+.asciidoc-content p {
+    margin-bottom: 1em;
+    color: var(--text-primary-color);
+}
+
+/* Code blocks */
+.asciidoc-content .listingblock pre,
+.asciidoc-content .literalblock pre {
+    background-color: rgba(128, 128, 128, 0.1);
+    color: var(--text-primary-color);
+    padding: 1em;
+    border-radius: 4px;
+    overflow-x: auto;
+    border: 1px solid var(--palette-neutral-8);
+    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.9em;
+}
+
+.asciidoc-content code {
+    background-color: rgba(128, 128, 128, 0.1);
+    color: var(--text-primary-color);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.9em;
+}
+
+/* Admonitions */
+.asciidoc-content .admonitionblock {
+    margin: 1.5em 0;
+    padding: 1em;
+    border-left: 4px solid var(--palette-neutral-8);
+    background-color: rgba(128, 128, 128, 0.05);
+    border-radius: 0 4px 4px 0;
+}
+
+.asciidoc-content .admonitionblock table {
+    border: none;
+    background: transparent;
+    width: 100%;
+}
+
+.asciidoc-content .admonitionblock td.icon {
+    width: 1%;
+    padding-right: 1em;
+    text-align: center;
+    vertical-align: top;
+    font-weight: bold;
+    color: var(--text-secondary-color);
+    text-transform: uppercase;
+}
+
+.asciidoc-content .admonitionblock td.content {
+    vertical-align: top;
+    color: var(--text-primary-color);
+}
+
+.asciidoc-content .admonitionblock td.content .title {
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+/* Specific admonition styling */
+.asciidoc-content .admonitionblock.note { border-left-color: var(--text-secondary-color); }
+.asciidoc-content .admonitionblock.tip { border-left-color: var(--text-secondary-color); }
+.asciidoc-content .admonitionblock.warning { border-left-color: var(--text-secondary-color); }
+.asciidoc-content .admonitionblock.caution { border-left-color: var(--text-secondary-color); }
+.asciidoc-content .admonitionblock.important { border-left-color: var(--text-secondary-color); }
+
+/* Tables */
+.asciidoc-content table.tableblock {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1.5em;
+    border: 1px solid var(--palette-neutral-8);
+}
+
+.asciidoc-content table.tableblock th.tableblock,
+.asciidoc-content table.tableblock td.tableblock {
+    padding: 0.5em 1em;
+    border: 1px solid var(--palette-neutral-8);
+    color: var(--text-primary-color);
+}
+
+.asciidoc-content table.tableblock th.tableblock {
+    background-color: rgba(128, 128, 128, 0.05);
+    font-weight: 600;
+    text-align: left;
+}
+
+/* Lists */
+.asciidoc-content ul, .asciidoc-content ol, .asciidoc-content dl {
+    margin-bottom: 1em;
+    color: var(--text-primary-color);
+    padding-left: 2em;
+}
+
+.asciidoc-content dd {
+    margin-left: 2em;
+    margin-bottom: 0.5em;
+}
+
+.asciidoc-content dt {
+    font-weight: bold;
+}
+
+/* Horizontal Rule and Blockquotes */
+.asciidoc-content hr {
+    border: 0;
+    border-top: 1px solid var(--palette-neutral-8);
+    margin: 2em 0;
+}
+
+.asciidoc-content blockquote {
+    margin: 1.5em 0;
+    padding: 0.5em 1em;
+    border-left: 4px solid var(--palette-neutral-8);
+    color: var(--text-secondary-color);
+    background-color: rgba(128, 128, 128, 0.02);
+}
+
+.asciidoc-content .title {
+    color: var(--text-secondary-color);
+    font-style: italic;
+    margin-bottom: 0.2em;
+}
+
+/* Invert diagrams in dark mode */
+.asciidoc-content.is-dark-theme img[src*="kroki"],
+.asciidoc-content.is-dark-theme img[src*="plantuml"] {
+    filter: invert(1) hue-rotate(180deg) brightness(1.2);
+}

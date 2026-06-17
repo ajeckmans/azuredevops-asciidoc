@@ -4,7 +4,7 @@ import * as ReactDOM from "react-dom";
 import HubApp from "./HubApp";
 import "azure-devops-ui/Core/override.css";
 
-SDK.init();
+SDK.init({ applyTheme: true });
 
 SDK.ready().then(() => {
     ReactDOM.render(<HubApp />, document.getElementById("root"));

@@ -5,7 +5,8 @@ module.exports = {
     target: "web",
     entry: {
         main: "./src/index.tsx",
-        hub: "./src/hub.tsx"
+        hub: "./src/hub.tsx",
+        action: "./src/action.tsx"
     },
     output: {
         filename: "[name].js",
@@ -26,6 +27,10 @@ module.exports = {
             {
                 test: /\.css$/,
                 use: ["style-loader", "css-loader"]
+            },
+            {
+                test: /\.(woff|woff2|eot|ttf|otf|svg)$/i,
+                type: 'asset/resource',
             }
         ]
     },
@@ -39,6 +44,11 @@ module.exports = {
             filename: "hub.html",
             template: "./src/hub.html",
             chunks: ["hub"]
+        }),
+        new HtmlWebpackPlugin({
+            filename: "action.html",
+            template: "./src/action.html",
+            chunks: ["action"]
         })
     ]
 };

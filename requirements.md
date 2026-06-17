@@ -21,7 +21,9 @@ This document tracks all the requested features and requirements for the AsciiDo
 
 ## Extension Architecture & Publishing
 - [x] **Tech Stack**: Use React, TypeScript, Webpack, and the `azure-devops-extension-api` / `azure-devops-ui` libraries.
-- [x] **Marketplace Updates**: Increment the `version` in `vss-extension.json` for new features so the extension updates automatically across shared organizations without requiring manual re-installation.
+- [x] **Marketplace Updates**: Increment the `version` in `vss-extension.json` for new features or bug fixes and re-publish.
+- [x] **Action Menu Contribution**: Add `ms.vss-code-web.pr-file-action-menu` and `ms.vss-code-web.pull-request-action-menu` contributions for previewing specific AsciiDoc files directly from the PR Files tab.
+- [x] **Repo Action Menu**: Add `ms.vss-code-web.source-tree-item-menu` and `ms.vss-code-web.change-list-item-menu` contributions to allow previewing AsciiDoc files directly from the general Repository view, with smart detection to redirect to the Hub (if on the default branch).
 - [x] **Inspiration Reference**: Use `ajeckmans/format-check-task` as a structural inspiration for building extensions.
 
 ## Project Hub Tab (AsciiDoc Repository Viewer)
@@ -31,3 +33,8 @@ This document tracks all the requested features and requirements for the AsciiDo
 - [x] **Global Background Caching**: To achieve empty repo filtering without crippling the API or spamming the browser console with restricted access errors, the extension must maintain a global, project-wide cache using `ExtensionDataService`.
 - [x] **Hourly Auto-Scan**: The global cache must be automatically refreshed once every hour by the first user who opens the page, running a background scan of all repositories.
 - [x] **Smart New Repo Detection**: The caching logic must automatically detect newly created repositories and scan them instantly, bypassing the 1-hour global timer.
+
+## Technical Constraints & Edge Cases (Lessons Learned)
+- **SDK Initialization Race Condition**: Using `SDK.init()` synchronously can cause the host to send an execution command *before* `SDK.register` is fully initialized, resulting in dropped clicks (the "two-click" bug). This must be solved using `SDK.init({ loaded: false })` and manually invoking `SDK.notifyLoadSucceeded()` after registration.
+- **Dynamic Action IDs**: Azure DevOps can request the registered action via its fully qualified ID (capitalized or lowercase), short ID, or a dynamically injected contribution ID. The action handler must be registered under all possible aliases to ensure bulletproof execution.
+- **Hub Navigation State**: Passing `?path=...` alone to the Hub isn't enough to select a file because the Hub aggregates multiple repositories. The action must pass both `repoId` and `path`, and the Hub must proactively parse these parameters to auto-expand the corresponding tree node and load the file.

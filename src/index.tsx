@@ -4,7 +4,7 @@ import * as ReactDOM from "react-dom";
 import App from "./App";
 import "azure-devops-ui/Core/override.css";
 
-SDK.init();
+SDK.init({ applyTheme: true });
 
 SDK.ready().then(() => {
     ReactDOM.render(<App />, document.getElementById("root"));

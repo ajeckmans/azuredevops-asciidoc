@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "asciidoc",
     "name": "AsciiDoc PR Viewer",
-    "version": "1.0.21",
+    "version": "1.0.52",
     "publisher": "ajeckmans",
     "targets": [
         {
@@ -38,13 +38,34 @@
             ],
             "properties": {
                 "name": "AsciiDoc",
-                "uri": "dist/hub.html"
+                "uri": "dist/hub.html",
+                "icon": "asset://images/asciidoc-icon.png"
+            }
+        },
+        {
+            "id": "asciidoc-preview-action",
+            "type": "ms.vss-web.action",
+            "targets": [
+                "ms.vss-code-web.pr-file-action-menu",
+                "ms.vss-code-web.pull-request-action-menu",
+                "ms.vss-code-web.change-list-item-menu",
+                "ms.vss-code-web.source-tree-item-menu"
+            ],
+            "properties": {
+                "text": "Preview AsciiDoc",
+                "title": "Preview this AsciiDoc file in the AsciiDoc tab",
+                "icon": "images/asciidoc-icon.png",
+                "uri": "dist/action.html"
             }
         }
     ],
     "files": [
         {
             "path": "dist",
+            "addressable": true
+        },
+        {
+            "path": "images",
             "addressable": true
         }
     ]

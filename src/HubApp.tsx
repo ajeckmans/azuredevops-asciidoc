@@ -4,6 +4,74 @@ import { AsciiDocRenderer } from "./components/AsciiDocRenderer";
 import { Icon } from "azure-devops-ui/Icon";
 import { Surface, SurfaceBackground } from "azure-devops-ui/Surface";
 import { Page } from "azure-devops-ui/Page";
+import * as SDK from "azure-devops-extension-sdk";
+import { CommonServiceIds, IHostNavigationService } from "azure-devops-extension-api";
+
+import { Tree } from "azure-devops-ui/TreeEx";
+import { TreeItemProvider, ITreeItem, ITreeItemEx } from "azure-devops-ui/Utilities/TreeItemProvider";
+import { ITreeColumn } from "azure-devops-ui/Components/TreeEx/Tree.Props";
+import { renderExpandableTreeCell } from "azure-devops-ui/TreeEx";
+import { ISimpleListCell } from "azure-devops-ui/List";
+import { ObservableValue } from "azure-devops-ui/Core/Observable";
+import { ISimpleTableCell } from "azure-devops-ui/Table";
+
+interface HubItemData extends ISimpleTableCell {
+    [key: string]: any;
+    name: ISimpleListCell;
+    path: string;
+    repoId: string;
+    isFolder: boolean;
+    isRepo: boolean;
+}
+
+function buildRepoTreeItems(files: any[], repoId: string): ITreeItem<HubItemData>[] {
+    const root: ITreeItem<HubItemData>[] = [];
+    const nodeMap = new Map<string, ITreeItem<HubItemData>>();
+
+    files.forEach(file => {
+        const cleanPath = file.path.startsWith("/") ? file.path.substring(1) : file.path;
+        const parts = cleanPath.split("/");
+        
+        let currentLevel = root;
+        let currentPath = "";
+
+        parts.forEach((part: string, index: number) => {
+            currentPath += (currentPath === "" ? "" : "/") + part;
+            const isFolder = index < parts.length - 1;
+            
+            let existingNode = nodeMap.get(currentPath);
+            
+            if (!existingNode) {
+                existingNode = {
+                    data: {
+                        name: {
+                            text: part,
+                            iconProps: {
+                                iconName: isFolder ? "FabricFolderFill" : "TextDocument",
+                                className: "icon-margin medium",
+                                style: { color: isFolder ? "#dcb67a" : "inherit" }
+                            }
+                        },
+                        path: "/" + currentPath,
+                        repoId: repoId,
+                        isFolder: isFolder,
+                        isRepo: false
+                    },
+                    expanded: isFolder ? true : undefined,
+                    childItems: isFolder ? [] : undefined
+                };
+                nodeMap.set(currentPath, existingNode);
+                currentLevel.push(existingNode);
+            }
+            
+            if (isFolder && existingNode.childItems) {
+                currentLevel = existingNode.childItems;
+            }
+        });
+    });
+
+    return root;
+}
 
 export default function HubApp() {
     const [repos, setRepos] = React.useState<any[]>([]);
@@ -13,6 +81,8 @@ export default function HubApp() {
     const [selectedFile, setSelectedFile] = React.useState<{ repoId: string, path: string } | null>(null);
     const [fileContent, setFileContent] = React.useState("");
     const [expandedNodes, setExpandedNodes] = React.useState<{ [key: string]: boolean }>({});
+    
+    const [itemProvider] = React.useState(new TreeItemProvider<HubItemData>());
 
     React.useEffect(() => {
         async function load() {
@@ -52,7 +122,7 @@ export default function HubApp() {
                                     globalState.reposWithAsciidoc.push(repo.id);
                                 }
                             } else {
-                                globalState.scannedRepoIds.push(repo.id); // Empty repo, still scanned
+                                globalState.scannedRepoIds.push(repo.id);
                             }
                         }));
                     }
@@ -67,13 +137,32 @@ export default function HubApp() {
                 finalRepos.sort((a, b) => a.name.localeCompare(b.name));
                 setRepos(finalRepos);
 
-                // Auto-expand and load the first repository if it exists
-                if (finalRepos.length > 0) {
+                const navService = await SDK.getService<IHostNavigationService>(CommonServiceIds.HostNavigationService);
+                const queryParams = await navService.getQueryParams();
+                const targetRepoId = queryParams.repoId;
+                let targetPath = queryParams.path;
+                
+                if (targetPath && targetPath.includes('%2F')) {
+                    targetPath = decodeURIComponent(targetPath);
+                }
+
+                if (targetRepoId && targetPath) {
+                    const targetRepo = finalRepos.find(r => r.id === targetRepoId);
+                    if (targetRepo) {
+                        setExpandedNodes(prev => ({ ...prev, [targetRepo.id]: true }));
+                        if (targetRepo.defaultBranch) {
+                            const files = await DevOpsService.getRepoAsciiDocFiles(targetRepo.id, projectName, targetRepo.defaultBranch);
+                            setRepoFiles(prev => ({ ...prev, [targetRepo.id]: files || [] }));
+                            const formattedPath = targetPath.startsWith('/') ? targetPath : '/' + targetPath;
+                            setSelectedFile({ repoId: targetRepo.id, path: formattedPath });
+                        }
+                    }
+                } else if (finalRepos.length > 0) {
                     const firstRepo = finalRepos[0];
-                    setExpandedNodes({ [firstRepo.id]: true });
+                    setExpandedNodes(prev => ({ ...prev, [firstRepo.id]: true }));
                     if (firstRepo.defaultBranch) {
                         const files = await DevOpsService.getRepoAsciiDocFiles(firstRepo.id, projectName, firstRepo.defaultBranch);
-                        setRepoFiles({ [firstRepo.id]: files || [] });
+                        setRepoFiles(prev => ({ ...prev, [firstRepo.id]: files || [] }));
                     }
                 }
             } catch (e) {
@@ -96,162 +185,139 @@ export default function HubApp() {
         loadContent();
     }, [selectedFile]);
 
-    const toggleExpand = async (nodeId: string, isRepo: boolean = false) => {
-        const isNowExpanded = !expandedNodes[nodeId];
-        setExpandedNodes(prev => ({ ...prev, [nodeId]: isNowExpanded }));
+    React.useEffect(() => {
+        const items: ITreeItem<HubItemData>[] = repos.map(repo => {
+            const isExpanded = !!expandedNodes[repo.id];
+            const files = repoFiles[repo.id] || [];
+            
+            return {
+                data: {
+                    name: {
+                        text: repo.name,
+                        iconProps: {
+                            iconName: "Repo",
+                            className: "icon-margin medium",
+                            style: { color: "var(--text-secondary-color, #666)" }
+                        }
+                    },
+                    path: "",
+                    repoId: repo.id,
+                    isFolder: true,
+                    isRepo: true
+                },
+                expanded: isExpanded,
+                childItems: isExpanded ? buildRepoTreeItems(files, repo.id) : []
+            };
+        });
+        
+        itemProvider.clear();
+        itemProvider.splice(undefined, [], [{ items }]);
+    }, [repos, repoFiles, expandedNodes, itemProvider]);
 
-        if (isRepo && isNowExpanded && !repoFiles[nodeId]) {
-            const repo = repos.find(r => r.id === nodeId);
-            if (repo && repo.defaultBranch) {
-                const projectName = await DevOpsService.getProjectName();
-                const files = await DevOpsService.getRepoAsciiDocFiles(repo.id, projectName, repo.defaultBranch);
-                setRepoFiles(prev => ({ ...prev, [nodeId]: files || [] }));
-            } else if (repo && !repo.defaultBranch) {
-                setRepoFiles(prev => ({ ...prev, [nodeId]: [] })); // Empty repo
-            }
-        }
-    };
-
-    const buildTree = (files: any[]) => {
-        const root: any = { isFolder: true, children: {}, path: "" };
-        files.forEach(f => {
-            const parts = f.path.split('/').filter((p: string) => p);
-            let current = root;
-            for (let i = 0; i < parts.length; i++) {
-                const part = parts[i];
-                const isFile = i === parts.length - 1;
-                if (!current.children[part]) {
-                    current.children[part] = {
-                        name: part,
-                        path: parts.slice(0, i + 1).join('/'),
-                        isFolder: !isFile,
-                        children: {}
-                    };
+    const handleToggle = async (event: any, treeItem: ITreeItemEx<HubItemData>) => {
+        const data = treeItem.underlyingItem.data;
+        if (data.isRepo) {
+            const repoId = data.repoId;
+            const isNowExpanded = !treeItem.underlyingItem.expanded;
+            
+            setExpandedNodes(prev => ({ ...prev, [repoId]: isNowExpanded }));
+            
+            if (isNowExpanded && !repoFiles[repoId]) {
+                const repo = repos.find(r => r.id === repoId);
+                if (repo && repo.defaultBranch) {
+                    const projectName = await DevOpsService.getProjectName();
+                    const files = await DevOpsService.getRepoAsciiDocFiles(repo.id, projectName, repo.defaultBranch);
+                    setRepoFiles(prev => ({ ...prev, [repoId]: files || [] }));
+                } else if (repo && !repo.defaultBranch) {
+                    setRepoFiles(prev => ({ ...prev, [repoId]: [] }));
                 }
-                current = current.children[part];
             }
-        });
-        return root;
-    };
-
-    const repoTrees = React.useMemo(() => {
-        const trees: { [repoId: string]: any } = {};
-        for (const repoId in repoFiles) {
-            trees[repoId] = buildTree(repoFiles[repoId] || []);
+        } else {
+            itemProvider.toggle(treeItem.underlyingItem);
         }
-        return trees;
-    }, [repoFiles]);
-
-    const renderTreeNodes = (node: any, repoId: string, depth: number) => {
-        const children = Object.values(node.children || {}).sort((a: any, b: any) => {
-            if (a.isFolder === b.isFolder) return a.name.localeCompare(b.name);
-            return a.isFolder ? -1 : 1;
-        });
-
-        return children.map((child: any) => {
-            const nodeId = `${repoId}:${child.path}`;
-            const isExpanded = expandedNodes[nodeId];
-            const isSelected = selectedFile?.repoId === repoId && selectedFile?.path === "/" + child.path;
-
-            return (
-                <div key={nodeId}>
-                    <div 
-                        style={{ 
-                            position: "relative",
-                            display: "flex", 
-                            alignItems: "center", 
-                            padding: "8px", 
-                            paddingLeft: `${depth * 16 + 8}px`,
-                            cursor: "pointer",
-                            backgroundColor: isSelected ? "#eff6fc" : "transparent",
-                            borderBottom: "1px solid transparent"
-                        }}
-                        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "#f4f4f4"; }}
-                        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "transparent"; }}
-                        onClick={() => {
-                            if (child.isFolder) toggleExpand(nodeId);
-                            else setSelectedFile({ repoId, path: "/" + child.path });
-                        }}
-                    >
-                        {isSelected && (
-                            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", backgroundColor: "#0078d4" }} />
-                        )}
-                        <div style={{ width: "16px", display: "flex", justifyContent: "center", marginRight: "4px" }}>
-                            {child.isFolder ? (
-                                <div onClick={(e) => { e.stopPropagation(); toggleExpand(nodeId); }}>
-                                    <Icon iconName={isExpanded ? "ChevronDown" : "ChevronRight"} />
-                                </div>
-                            ) : null}
-                        </div>
-                        <Icon iconName={child.isFolder ? "Folder" : "Page"} style={{ marginRight: "8px", color: child.isFolder ? "#dcb67a" : "inherit", fontSize: "16px" }} />
-                        <span style={{ flexGrow: 1, textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden", fontSize: "14px", color: "#333" }}>{child.name}</span>
-                    </div>
-                    {child.isFolder && isExpanded && renderTreeNodes(child, repoId, depth + 1)}
-                </div>
-            );
-        });
     };
+
+    const columns = React.useMemo((): ITreeColumn<HubItemData>[] => [
+        {
+            id: "name",
+            width: new ObservableValue(-100),
+            hierarchical: true,
+            indentationSize: 16,
+            renderCell: (rowIndex, columnIndex, treeColumn, treeItem) => {
+                const data = treeItem.underlyingItem.data;
+                const isSelected = selectedFile?.repoId === data.repoId && selectedFile?.path === data.path;
+
+                // Create clone for dynamic states
+                const nameCell: ISimpleListCell = {
+                    ...data.name,
+                    textClassName: isSelected || data.isRepo ? "fontWeightSemiBold" : undefined
+                };
+
+                const originalName = data.name;
+                data.name = nameCell;
+
+                const renderedCell = renderExpandableTreeCell(
+                    rowIndex,
+                    columnIndex,
+                    treeColumn,
+                    treeItem
+                );
+
+                data.name = originalName;
+
+                return renderedCell;
+            }
+        }
+    ], [selectedFile]);
 
     return (
         <div className="flex-grow flex-column" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
             <Surface background={SurfaceBackground.neutral}>
             <Page className="flex-grow flex-column">
-            <div style={{ display: "flex", flex: 1, overflow: "hidden", borderTop: "1px solid #eaeaea" }}>
-                <div style={{ width: "300px", borderRight: "1px solid #eaeaea", display: "flex", flexDirection: "column", background: "var(--component-bg, white)", overflowY: "auto" }}>
+            <div style={{ display: "flex", flex: 1, overflow: "hidden", borderTop: "1px solid var(--palette-neutral-8, #eaeaea)" }}>
+                <div style={{ width: "300px", borderRight: "1px solid var(--palette-neutral-8, #eaeaea)", display: "flex", flexDirection: "column", background: "transparent" }}>
                     {loading ? (
-                        <div style={{ padding: "16px", color: "#666" }}>{loadingMessage}</div>
+                        <div style={{ padding: "16px", color: "var(--text-secondary-color, #666)" }}>{loadingMessage}</div>
                     ) : repos.length === 0 ? (
-                        <div style={{ padding: "16px", color: "#666" }}>No AsciiDoc files found in any repositories.</div>
+                        <div style={{ padding: "16px", color: "var(--text-secondary-color, #666)" }}>No AsciiDoc files found in any repositories.</div>
                     ) : (
-                        repos.map(repo => {
-                            const isExpanded = expandedNodes[repo.id];
-                            const tree = repoTrees[repo.id] || buildTree([]);
-                            
-                            return (
-                                <div key={repo.id}>
-                                    <div 
-                                        style={{ 
-                                            display: "flex", 
-                                            alignItems: "center", 
-                                            padding: "8px", 
-                                            cursor: "pointer",
-                                            fontWeight: "600",
-                                            background: "var(--component-bg, white)",
-                                            borderBottom: "1px solid #eaeaea",
-                                            transition: "background-color 0.2s"
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--palette-neutral-4, #f4f4f4)"}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = "var(--component-bg, white)"}
-                                        onClick={() => toggleExpand(repo.id, true)}
-                                    >
-                                        <div style={{ width: "16px", display: "flex", justifyContent: "center", marginRight: "8px" }}>
-                                            <Icon iconName={isExpanded ? "ChevronDown" : "ChevronRight"} />
-                                        </div>
-                                        <Icon iconName="Repo" style={{ marginRight: "8px", fontSize: "16px", color: "#666" }} />
-                                        <span style={{ fontSize: "14px", color: "#333" }}>{repo.name}</span>
-                                    </div>
-                                    {isExpanded && renderTreeNodes(tree, repo.id, 1)}
-                                </div>
-                            );
-                        })
+                        <Tree<HubItemData>
+                            columns={columns}
+                            itemProvider={itemProvider as any}
+                            scrollable={true}
+                            showHeader={false}
+                            showLines={false}
+                            singleClickActivation={true}
+                            onToggle={handleToggle as any}
+                            onSelect={(event, treeRow) => {
+                                const data = treeRow.data.underlyingItem.data;
+                                if (!data.isFolder) {
+                                    setSelectedFile({ repoId: data.repoId, path: data.path });
+                                } else if (!data.isRepo) {
+                                    itemProvider.toggle(treeRow.data.underlyingItem);
+                                } else {
+                                    handleToggle(event, treeRow.data);
+                                }
+                            }}
+                        />
                     )}
                 </div>
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden"  }}>
                     {selectedFile ? (
                         <div style={{ flex: 1, overflow: "auto", padding: "16px", display: "flex", flexDirection: "column" }}>
                             <div style={{ 
-                                background: "var(--component-bg, white)",
+                                background: "transparent",
                                 borderRadius: "4px", 
                                 boxShadow: "0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108)",
                                 display: "flex",
                                 flexDirection: "column"
                             }}>
-                                <div style={{ padding: "12px 16px", borderBottom: "1px solid #eaeaea", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--palette-neutral-8, #eaeaea)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                     <div style={{ display: "flex", flexDirection: "column" }}>
                                         <div style={{ display: "flex", alignItems: "center" }}>
-                                            <span style={{ fontSize: "14px", fontWeight: "600", color: "#333", marginRight: "8px" }}>{selectedFile.path.split('/').pop()}</span>
+                                            <span style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary-color, #333)", marginRight: "8px" }}>{selectedFile.path.split('/').pop()}</span>
                                         </div>
-                                        <span style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
+                                        <span style={{ fontSize: "12px", color: "var(--text-secondary-color, #666)", marginTop: "4px" }}>
                                             {repos.find(r => r.id === selectedFile.repoId)?.name} {selectedFile.path}
                                         </span>
                                     </div>
@@ -267,7 +333,7 @@ export default function HubApp() {
                             </div>
                         </div>
                     ) : (
-                        <div style={{ padding: "16px", color: "#666" }}>
+                        <div style={{ padding: "16px", color: "var(--text-secondary-color, #666)" }}>
                             Select an AsciiDoc file from the repository tree to view its content.
                         </div>
                     )}
