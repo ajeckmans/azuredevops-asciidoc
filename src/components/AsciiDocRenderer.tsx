@@ -20,7 +20,7 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, fil
 
     const htmlContent = React.useMemo(() => {
         return asciidoctor.convert(content, { 
-            safe: 'safe', 
+            safe: 'secure',
             attributes: { 
                 showtitle: true,
                 outfilesuffix: '.adoc' 
