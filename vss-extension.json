@@ -1,0 +1,40 @@
+{
+    "manifestVersion": 1,
+    "id": "asciidoc",
+    "name": "AsciiDoc PR Viewer",
+    "version": "1.0.11",
+    "publisher": "ajeckmans",
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "scopes": [
+        "vso.code",
+        "vso.threads_full"
+    ],
+    "description": "View and comment on AsciiDoc files in Pull Requests.",
+    "public": false,
+    "categories": [
+        "Azure Repos"
+    ],
+    "contributions": [
+        {
+            "id": "asciidoc-pr-tab",
+            "type": "ms.vss-web.tab",
+            "targets": [
+                "ms.vss-code-web.pr-tabs"
+            ],
+            "properties": {
+                "name": "AsciiDoc",
+                "uri": "dist/index.html"
+            }
+        }
+    ],
+    "files": [
+        {
+            "path": "dist",
+            "addressable": true
+        }
+    ]
+}

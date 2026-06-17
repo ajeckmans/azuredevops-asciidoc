@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "ES6",
+        "module": "ESNext",
+        "moduleResolution": "node",
+        "jsx": "react",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "./dist",
+        "allowSyntheticDefaultImports": true,
+        "rootDir": "./src",
+        "ignoreDeprecations": "6.0"
+    },
+    "include": ["src/**/*"]
+}
