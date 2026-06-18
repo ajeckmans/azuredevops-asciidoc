@@ -20,6 +20,19 @@ export class DevOpsService {
     }
 
     private static dataManagerInstance: any = null;
+    private static cachedPrId: number | null = null;
+    private static cachedPr: any = null;
+
+    private static async getPullRequest(repositoryId: string, projectName: string): Promise<any> {
+        const prId = await this.getPullRequestId();
+        if (this.cachedPrId === prId && this.cachedPr) {
+            return this.cachedPr;
+        }
+        const gitClient = getClient(GitRestClient);
+        this.cachedPr = await gitClient.getPullRequestById(prId, projectName);
+        this.cachedPrId = prId;
+        return this.cachedPr;
+    }
 
     private static async getDataManager(): Promise<any> {
         if (!this.dataManagerInstance) {
@@ -78,8 +91,7 @@ export class DevOpsService {
 
     public static async getFileContent(repositoryId: string, projectName: string, path: string): Promise<string> {
         const gitClient = getClient(GitRestClient);
-        const prId = await this.getPullRequestId();
-        const pr = await gitClient.getPullRequestById(prId, projectName);
+        const pr = await this.getPullRequest(repositoryId, projectName);
         const commitId = this.getCommitIdFromPr(pr);
 
         const contentStream = await gitClient.getItemText(
@@ -95,6 +107,32 @@ export class DevOpsService {
         );
         
         return contentStream;
+    }
+
+    public static async getPreviousFileContent(repositoryId: string, projectName: string, path: string): Promise<string> {
+        const gitClient = getClient(GitRestClient);
+        const pr = await this.getPullRequest(repositoryId, projectName);
+        const commitId = pr.lastMergeTargetCommit ? pr.lastMergeTargetCommit.commitId : "";
+
+        if (!commitId) return "";
+
+        try {
+            const contentStream = await gitClient.getItemText(
+                repositoryId,
+                path,
+                projectName,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                { versionType: 2, version: commitId, versionOptions: 0 } as any
+            );
+            return contentStream;
+        } catch (e) {
+            console.warn("Failed to get previous file content", e);
+            return "";
+        }
     }
 
     public static async createThread(repositoryId: string, projectName: string, filePath: string, content: string): Promise<void> {

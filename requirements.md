@@ -38,3 +38,12 @@ This document tracks all the requested features and requirements for the AsciiDo
 - **SDK Initialization Race Condition**: Using `SDK.init()` synchronously can cause the host to send an execution command *before* `SDK.register` is fully initialized, resulting in dropped clicks (the "two-click" bug). This must be solved using `SDK.init({ loaded: false })` and manually invoking `SDK.notifyLoadSucceeded()` after registration.
 - **Dynamic Action IDs**: Azure DevOps can request the registered action via its fully qualified ID (capitalized or lowercase), short ID, or a dynamically injected contribution ID. The action handler must be registered under all possible aliases to ensure bulletproof execution.
 - **Hub Navigation State**: Passing `?path=...` alone to the Hub isn't enough to select a file because the Hub aggregates multiple repositories. The action must pass both `repoId` and `path`, and the Hub must proactively parse these parameters to auto-expand the corresponding tree node and load the file.
+
+## Future Enhancements
+- [x] **Rendered Visual Diffs**: Highlight added/modified blocks and indicate deleted blocks inline within the rendered document in PR view.
+- [ ] **Branch Selector in the Hub**: Allow users to browse `.adoc` files on other branches or tags.
+- [ ] **Side-by-Side Edit & Preview**: A button to edit the AsciiDoc source natively with a live-updating preview.
+- [ ] **Sticky Table of Contents (TOC)**: Parse the AsciiDoc TOC and render it as a floating sidebar or sticky header.
+- [ ] **Cross-Repository Links (xref)**: Rewrite `xref:` links to navigate within the ADO UI properly.
+- [ ] **Anchor Navigation**: Smooth scrolling for internal `<<anchor>>` links.
+- [ ] **In-Document Search**: A custom search bar to find text within the rendered AsciiDoc content.

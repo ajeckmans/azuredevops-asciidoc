@@ -156,3 +156,26 @@
 .asciidoc-content.is-dark-theme img[src*="plantuml"] {
     filter: invert(1) hue-rotate(180deg) brightness(1.2);
 }
+
+/* Visual Diff Highlights */
+.asciidoc-content .visual-diff-added {
+    background-color: rgba(46, 160, 67, 0.15); /* GitHub style green matching ADO */
+    border-left: 4px solid var(--palette-success, #2ea043);
+    padding-left: 12px;
+}
+
+.asciidoc-content .visual-diff-deleted-marker {
+    border-top: 2px dashed var(--palette-error, #f85149);
+    position: relative;
+    margin: 8px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.asciidoc-content .visual-diff-deleted-marker span {
+    color: var(--palette-error, #f85149);
+    background: var(--background-color, white);
+    padding: 0 8px;
+    font-size: 16px;
+}

@@ -15,6 +15,7 @@ const App: React.FC = () => {
     const [threads, setThreads] = React.useState<any[]>([]);
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null);
     const [fileContent, setFileContent] = React.useState<string>("");
+    const [previousFileContent, setPreviousFileContent] = React.useState<string>("");
     const [loading, setLoading] = React.useState(true);
     const [addingCommentPath, setAddingCommentPath] = React.useState<string | null>(null);
     const [replyingToThread, setReplyingToThread] = React.useState<number | null>(null);
@@ -52,10 +53,15 @@ const App: React.FC = () => {
                     setReplyingToThread(null);
                     setFileContent("Loading...");
                     try {
-                        const content = await DevOpsService.getFileContent(repoId, project, defaultPath);
+                        const [content, prevContent] = await Promise.all([
+                            DevOpsService.getFileContent(repoId, project, defaultPath),
+                            DevOpsService.getPreviousFileContent(repoId, project, defaultPath)
+                        ]);
                         setFileContent(content);
+                        setPreviousFileContent(prevContent);
                     } catch (err) {
                         setFileContent("Error loading file content.");
+                        setPreviousFileContent("");
                     }
                 }
             } catch (err) {
@@ -76,11 +82,16 @@ const App: React.FC = () => {
             try {
                 const repoId = await DevOpsService.getRepositoryId();
                 const project = await DevOpsService.getProjectName();
-                const content = await DevOpsService.getFileContent(repoId, project, path);
+                const [content, prevContent] = await Promise.all([
+                    DevOpsService.getFileContent(repoId, project, path),
+                    DevOpsService.getPreviousFileContent(repoId, project, path)
+                ]);
                 setFileContent(content);
+                setPreviousFileContent(prevContent);
             } catch (err) {
                 console.error("Error fetching content:", err);
                 setFileContent("Error loading file content.");
+                setPreviousFileContent("");
             }
         }
     };
@@ -337,6 +348,7 @@ const App: React.FC = () => {
                                     <div style={{ padding: "16px 0" }}>
                                         <AsciiDocRenderer 
                                             content={fileContent} 
+                                            previousContent={previousFileContent}
                                             filePath={selectedFile} 
                                             onLinkClick={handleFileSelected}
                                             fetchFileContent={async (path) => {

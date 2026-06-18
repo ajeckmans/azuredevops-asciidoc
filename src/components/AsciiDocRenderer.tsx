@@ -1,5 +1,6 @@
 import * as React from "react";
 import Asciidoctor from "@asciidoctor/core";
+import * as Diff from 'diff';
 // @ts-ignore
 import * as kroki from "asciidoctor-kroki";
 import hljs from 'highlight.js';
@@ -16,6 +17,7 @@ try {
 
 export interface AsciiDocRendererProps {
     content: string;
+    previousContent?: string;
     filePath: string;
     onLinkClick?: (path: string) => void;
     fetchFileContent?: (path: string) => Promise<string | null>;
@@ -33,7 +35,7 @@ function resolvePath(currentPath: string, target: string): string {
     return '/' + stack.join('/');
 }
 
-export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, filePath, onLinkClick, fetchFileContent }) => {
+export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, previousContent, filePath, onLinkClick, fetchFileContent }) => {
     const [isDarkTheme, setIsDarkTheme] = React.useState<boolean>(false);
     const [htmlContent, setHtmlContent] = React.useState<string>("");
 
@@ -124,16 +126,24 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, fil
                 console.error("Failed to register kroki:", e);
             }
 
-            const html = asciidoctor.convert(rewrittenContent, {
+            const options = {
                 safe: 'safe',
                 extension_registry: registry,
+                sourcemap: true,
                 attributes: {
                     showtitle: true,
                     outfilesuffix: '.adoc',
                     icons: 'font',
                     'source-highlighter': 'highlight.js'
                 }
-            }) as string;
+            };
+
+            const doc = asciidoctor.load(rewrittenContent, options);
+            const blocks = doc.findBy((b: any) => typeof b.getLineNumber() !== 'undefined');
+            blocks.forEach((block: any) => {
+                block.setId(`adoc-source-line-${block.getLineNumber()}`);
+            });
+            const html = doc.convert() as string;
 
             if (!isCancelled) {
                 setHtmlContent(html);
@@ -171,8 +181,52 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, fil
                     anchor.setAttribute("data-internal-path", finalPath);
                 }
             });
+
+            // Visual Diff Rendering
+            if (previousContent !== undefined && previousContent !== "") {
+                setTimeout(() => {
+                    try {
+                        const changes = Diff.diffLines(previousContent, content);
+                        let newLineNum = 1;
+                        
+                        // Remove existing diff markers if any
+                        contentRef.current?.querySelectorAll('.visual-diff-deleted-marker').forEach(e => e.remove());
+                        contentRef.current?.querySelectorAll('.visual-diff-added').forEach(e => e.classList.remove('visual-diff-added'));
+
+                        changes.forEach((change) => {
+                            const count = change.count || 0;
+                            if (change.added) {
+                                for (let i = 0; i < count; i++) {
+                                    const targetLine = newLineNum + i;
+                                    const elem = document.getElementById(`adoc-source-line-${targetLine}`);
+                                    if (elem) {
+                                        elem.classList.add("visual-diff-added");
+                                    }
+                                }
+                                newLineNum += count;
+                            } else if (change.removed) {
+                                let targetLine = newLineNum; 
+                                let elem = document.getElementById(`adoc-source-line-${targetLine}`);
+                                if (!elem && targetLine > 1) {
+                                    elem = document.getElementById(`adoc-source-line-${targetLine - 1}`);
+                                }
+                                if (elem && elem.parentNode) {
+                                    const marker = document.createElement("div");
+                                    marker.className = "visual-diff-deleted-marker";
+                                    marker.innerHTML = `<span aria-hidden="true" class="left-icon flex-noshrink fabric-icon ms-Icon--Cancel medium"></span>`;
+                                    elem.parentNode.insertBefore(marker, elem);
+                                }
+                            } else {
+                                newLineNum += count;
+                            }
+                        });
+                    } catch (e) {
+                        console.error("Diff failed", e);
+                    }
+                }, 0);
+            }
         }
-    }, [htmlContent, filePath]);
+    }, [htmlContent, filePath, content, previousContent]);
 
     const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
