@@ -1,6 +1,7 @@
 name: Release to Azure DevOps Marketplace
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - 'main'
