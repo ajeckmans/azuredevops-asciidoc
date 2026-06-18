@@ -67,7 +67,7 @@ jobs:
             tfx extension publish --manifests vss-extension.json --override "{\"public\": false}" --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }} --rev-version
           else
             # For main branch, create the VSIX locally so it can be attached to the GitHub Release
-            tfx extension create --manifests vss-extension.json --output-path ./dist/
+            tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\"}" --output-path ./dist/
             tfx extension publish --vsix dist/ajeckmans.asciidoc-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
           fi
 
