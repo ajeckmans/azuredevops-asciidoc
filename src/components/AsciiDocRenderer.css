@@ -164,6 +164,12 @@
     padding-left: 12px;
 }
 
+.asciidoc-content .visual-diff-changed {
+    background-color: rgba(0, 120, 212, 0.15); /* ADO Primary Blue for modified lines */
+    border-left: 4px solid var(--palette-primary, #0078d4);
+    padding-left: 12px;
+}
+
 .asciidoc-content .visual-diff-deleted-marker {
     border-top: 2px dashed var(--palette-error, #f85149);
     position: relative;

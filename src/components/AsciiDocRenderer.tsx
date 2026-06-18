@@ -192,34 +192,70 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                         // Remove existing diff markers if any
                         contentRef.current?.querySelectorAll('.visual-diff-deleted-marker').forEach(e => e.remove());
                         contentRef.current?.querySelectorAll('.visual-diff-added').forEach(e => e.classList.remove('visual-diff-added'));
+                        contentRef.current?.querySelectorAll('.visual-diff-changed').forEach(e => e.classList.remove('visual-diff-changed'));
 
-                        changes.forEach((change) => {
+                        let i = 0;
+                        while (i < changes.length) {
+                            const change = changes[i];
                             const count = change.count || 0;
-                            if (change.added) {
-                                for (let i = 0; i < count; i++) {
-                                    const targetLine = newLineNum + i;
-                                    const elem = document.getElementById(`adoc-source-line-${targetLine}`);
-                                    if (elem) {
-                                        elem.classList.add("visual-diff-added");
+
+                            if (change.removed) {
+                                if (i + 1 < changes.length && changes[i+1].added) {
+                                    // Modification (Removed followed by Added)
+                                    const nextCount = changes[i+1].count || 0;
+                                    for (let j = 0; j < nextCount; j++) {
+                                        const targetLine = newLineNum + j;
+                                        const elem = document.getElementById(`adoc-source-line-${targetLine}`);
+                                        if (elem) {
+                                            elem.classList.add("visual-diff-changed");
+                                        }
+                                    }
+                                    newLineNum += nextCount;
+                                    i += 2; // Skip both
+                                    continue;
+                                } else {
+                                    // Pure deletion
+                                    let targetLine = newLineNum; 
+                                    let elem = document.getElementById(`adoc-source-line-${targetLine}`);
+                                    if (!elem && targetLine > 1) {
+                                        elem = document.getElementById(`adoc-source-line-${targetLine - 1}`);
+                                    }
+                                    if (elem && elem.parentNode) {
+                                        const marker = document.createElement("div");
+                                        marker.className = "visual-diff-deleted-marker";
+                                        marker.innerHTML = `<span aria-hidden="true" class="left-icon flex-noshrink fabric-icon ms-Icon--Cancel medium"></span>`;
+                                        elem.parentNode.insertBefore(marker, elem);
                                     }
                                 }
-                                newLineNum += count;
-                            } else if (change.removed) {
-                                let targetLine = newLineNum; 
-                                let elem = document.getElementById(`adoc-source-line-${targetLine}`);
-                                if (!elem && targetLine > 1) {
-                                    elem = document.getElementById(`adoc-source-line-${targetLine - 1}`);
-                                }
-                                if (elem && elem.parentNode) {
-                                    const marker = document.createElement("div");
-                                    marker.className = "visual-diff-deleted-marker";
-                                    marker.innerHTML = `<span aria-hidden="true" class="left-icon flex-noshrink fabric-icon ms-Icon--Cancel medium"></span>`;
-                                    elem.parentNode.insertBefore(marker, elem);
+                            } else if (change.added) {
+                                if (i + 1 < changes.length && changes[i+1].removed) {
+                                    // Modification (Added followed by Removed)
+                                    for (let j = 0; j < count; j++) {
+                                        const targetLine = newLineNum + j;
+                                        const elem = document.getElementById(`adoc-source-line-${targetLine}`);
+                                        if (elem) {
+                                            elem.classList.add("visual-diff-changed");
+                                        }
+                                    }
+                                    newLineNum += count;
+                                    i += 2; // Skip both
+                                    continue;
+                                } else {
+                                    // Pure addition
+                                    for (let j = 0; j < count; j++) {
+                                        const targetLine = newLineNum + j;
+                                        const elem = document.getElementById(`adoc-source-line-${targetLine}`);
+                                        if (elem) {
+                                            elem.classList.add("visual-diff-added");
+                                        }
+                                    }
+                                    newLineNum += count;
                                 }
                             } else {
                                 newLineNum += count;
                             }
-                        });
+                            i++;
+                        }
                     } catch (e) {
                         console.error("Diff failed", e);
                     }
