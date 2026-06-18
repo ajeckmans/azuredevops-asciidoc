@@ -27,10 +27,13 @@ jobs:
         with:
           node-version: 'lts/*'
 
+      - name: Install tfx-cli
+        run: npm install -g tfx-cli
+
       - name: Set version
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            PUBLISHED_JSON=$(npx tfx extension show --publisher ajeckmans --extension-id asciidoc --token ${{ secrets.AZURE_DEVOPS_PAT }} --json || echo "{}")
+            PUBLISHED_JSON=$(tfx extension show --publisher ajeckmans --extension-id asciidoc --token ${{ secrets.AZURE_DEVOPS_PAT }} --json || echo "{}")
             PUBLISHED_VERSION=$(echo "$PUBLISHED_JSON" | jq -r '.versions[0].version')
             
             if [ -z "$PUBLISHED_VERSION" ] || [ "$PUBLISHED_VERSION" == "null" ]; then
@@ -54,9 +57,6 @@ jobs:
 
       - name: Build task bundle
         run: npm run build
-        
-      - name: Install tfx-cli
-        run: npm install -g tfx-cli
 
       - name: Package & Publish Extension
         run: |
