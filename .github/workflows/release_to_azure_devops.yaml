@@ -44,24 +44,16 @@ jobs:
       - name: Install tfx-cli
         run: npm install -g tfx-cli
 
-      - name: Package Extension
+      - name: Package & Publish Extension
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For PRs, modify the manifest and publish directly using --rev-version to auto-increment privately
             sed -i 's/"id": "asciidoc"/"id": "asciidoc-private"/g' vss-extension.json
             sed -i 's/"name": "AsciiDoc PR Viewer"/"name": "AsciiDoc PR Viewer (Private Test Version)"/g' vss-extension.json
-            tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\", \"public\": false}" --output-path ./dist/
+            tfx extension publish --manifests vss-extension.json --override "{\"public\": false}" --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }} --rev-version
           else
-            tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\"}" --output-path ./dist/
-          fi
-
-      - name: Publish to Azure DevOps Marketplace
-        id: publish
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            tfx extension publish --vsix dist/ajeckmans.asciidoc-private-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }} --rev-version
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            tfx extension publish --vsix dist/ajeckmans.asciidoc-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --rev-version
-          else
+            # For main branch, create the VSIX locally so it can be attached to the GitHub Release
+            tfx extension create --manifests vss-extension.json --output-path ./dist/
             tfx extension publish --vsix dist/ajeckmans.asciidoc-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
           fi
 
