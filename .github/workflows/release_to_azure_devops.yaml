@@ -2,6 +2,8 @@ name: Release to Azure DevOps Marketplace
 
 on:
   push:
+    branches:
+      - 'main'
     tags:
       - 'v*'
   pull_request:
@@ -10,7 +12,7 @@ on:
 
 jobs:
   package-and-publish:
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,6 +31,12 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "EXT_VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Set version (main push)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          EXT_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
+          echo "EXT_VERSION=${EXT_VERSION}" >> $GITHUB_ENV
 
       - name: Set version (PR)
         if: github.event_name == 'pull_request'
@@ -81,6 +89,8 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             tfx extension publish --vsix dist/ajeckmans.asciidoc-private-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            tfx extension publish --vsix dist/ajeckmans.asciidoc-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --rev-version
           else
             tfx extension publish --vsix dist/ajeckmans.asciidoc-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
           fi
