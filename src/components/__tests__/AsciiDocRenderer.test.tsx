@@ -4,6 +4,12 @@ import "@testing-library/jest-dom";
 
 // Mock @asciidoctor/core before importing the component
 const mockConvert = jest.fn().mockReturnValue("<h1>Mocked Content</h1>");
+const mockLoad = jest.fn().mockReturnValue({
+    findBy: () => [
+        { getLineNumber: () => 1, setId: jest.fn() }
+    ],
+    convert: mockConvert
+});
 const mockIncludeProcessor = jest.fn();
 const mockRegistry = {
     includeProcessor: mockIncludeProcessor
@@ -11,6 +17,7 @@ const mockRegistry = {
 
 jest.mock("@asciidoctor/core", () => {
     return () => ({
+        load: mockLoad,
         convert: mockConvert,
         Extensions: {
             create: () => mockRegistry
@@ -26,19 +33,21 @@ import { AsciiDocRenderer } from "../AsciiDocRenderer";
 describe("AsciiDocRenderer", () => {
     beforeEach(() => {
         mockConvert.mockClear();
+        mockLoad.mockClear();
         mockIncludeProcessor.mockClear();
     });
 
-    it("calls asciidoctor.convert with safe: 'safe' mode", async () => {
+    it("calls asciidoctor.load with safe: 'safe' mode and sourcemap: true", async () => {
         const content = "== Test Content";
         render(<AsciiDocRenderer content={content} filePath="/some/path.adoc" />);
 
         await waitFor(() => {
-            expect(mockConvert).toHaveBeenCalledTimes(1);
+            expect(mockLoad).toHaveBeenCalledTimes(1);
         });
 
-        expect(mockConvert).toHaveBeenCalledWith(content, expect.objectContaining({
-            safe: 'safe'
+        expect(mockLoad).toHaveBeenCalledWith(content, expect.objectContaining({
+            safe: 'safe',
+            sourcemap: true
         }));
     });
 
