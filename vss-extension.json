@@ -13,7 +13,19 @@
         "vso.code",
         "vso.threads_full"
     ],
-    "description": "View and comment on AsciiDoc files in Pull Requests.",
+    "description": "Seamlessly render and interact with AsciiDoc files natively in Pull Requests and the Repository Hub.",
+    "icons": {
+        "default": "images/asciidoc-icon.png"
+    },
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/ajeckmans/azuredevops-asciidoc"
+    },
+    "content": {
+        "details": {
+            "path": "README.md"
+        }
+    },
     "public": false,
     "categories": [
         "Azure Repos"
