@@ -339,6 +339,16 @@ const App: React.FC = () => {
                                             content={fileContent} 
                                             filePath={selectedFile} 
                                             onLinkClick={handleFileSelected}
+                                            fetchFileContent={async (path) => {
+                                                try {
+                                                    const repoId = await DevOpsService.getRepositoryId();
+                                                    const project = await DevOpsService.getProjectName();
+                                                    return await DevOpsService.getFileContent(repoId, project, path);
+                                                } catch (e) {
+                                                    console.error("Failed to fetch included file:", path, e);
+                                                    return null;
+                                                }
+                                            }}
                                         />
                                     </div>
                                 </div>

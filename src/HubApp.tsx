@@ -367,6 +367,15 @@ export default function HubApp() {
                                         onLinkClick={(newPath) => {
                                             handleFileSelected(selectedFile.repoId, newPath);
                                         }}
+                                        fetchFileContent={async (path) => {
+                                            try {
+                                                const projectName = await DevOpsService.getProjectName();
+                                                return await DevOpsService.getRepoFileContent(selectedFile.repoId, projectName, path);
+                                            } catch (e) {
+                                                console.error("Failed to fetch included file:", path, e);
+                                                return null;
+                                            }
+                                        }}
                                     />
                                 </div>
                             </div>

@@ -18,10 +18,24 @@ export interface AsciiDocRendererProps {
     content: string;
     filePath: string;
     onLinkClick?: (path: string) => void;
+    fetchFileContent?: (path: string) => Promise<string | null>;
 }
 
-export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, filePath, onLinkClick }) => {
+function resolvePath(currentPath: string, target: string): string {
+    if (target.startsWith('/')) return target;
+    const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+    const parts = (dir + '/' + target).split('/');
+    const stack: string[] = [];
+    for (const part of parts) {
+        if (part === '..') stack.pop();
+        else if (part !== '.' && part !== '') stack.push(part);
+    }
+    return '/' + stack.join('/');
+}
+
+export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, filePath, onLinkClick, fetchFileContent }) => {
     const [isDarkTheme, setIsDarkTheme] = React.useState<boolean>(false);
+    const [htmlContent, setHtmlContent] = React.useState<string>("");
 
     React.useEffect(() => {
         const updateTheme = () => {
@@ -33,24 +47,103 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, fil
             }
         };
 
-        // Check initially (wait a tick for SDK to apply variables)
         setTimeout(updateTheme, 100);
 
         window.addEventListener("themeApplied", updateTheme);
         return () => window.removeEventListener("themeApplied", updateTheme);
     }, []);
 
-    const htmlContent = React.useMemo(() => {
-        return asciidoctor.convert(content, { 
-            safe: 'secure',
-            attributes: { 
-                showtitle: true,
-                outfilesuffix: '.adoc',
-                icons: 'font',
-                'source-highlighter': 'highlight.js'
-            } 
-        }) as string;
-    }, [content]);
+    React.useEffect(() => {
+        let isCancelled = false;
+
+        const processAndConvert = async () => {
+            const cache = new Map<string, string>();
+
+            const prefetch = async (text: string, currentPath: string, depth: number = 0): Promise<string> => {
+                if (depth > 20) return text; // max depth
+                let newText = text;
+                const regex = /^include::([^\[]+)\[(.*?)\]/gm;
+                let match;
+                const promises: Promise<void>[] = [];
+                const replacements: { fullMatch: string, absPath: string, attrs: string }[] = [];
+
+                while ((match = regex.exec(text)) !== null) {
+                    const fullMatch = match[0];
+                    const target = match[1];
+                    const attrs = match[2];
+                    const absPath = resolvePath(currentPath, target);
+                    replacements.push({ fullMatch, absPath, attrs });
+
+                    if (!cache.has(absPath) && fetchFileContent) {
+                        cache.set(absPath, ""); // mark pending
+                        promises.push((async () => {
+                            try {
+                                const fetchedContent = await fetchFileContent(absPath);
+                                if (fetchedContent) {
+                                    const rewrittenContent = await prefetch(fetchedContent, absPath, depth + 1);
+                                    cache.set(absPath, rewrittenContent);
+                                } else {
+                                    cache.set(absPath, `// INCLUDE NOT FOUND: ${absPath}`);
+                                }
+                            } catch (e) {
+                                cache.set(absPath, `// ERROR FETCHING INCLUDE: ${absPath}`);
+                            }
+                        })());
+                    }
+                }
+
+                await Promise.all(promises);
+
+                for (const rep of replacements) {
+                    // Safe string replacement replacing all exact occurrences
+                    newText = newText.split(rep.fullMatch).join(`include::${rep.absPath}[${rep.attrs}]`);
+                }
+
+                return newText;
+            };
+
+            const rewrittenContent = await prefetch(content, filePath);
+            if (isCancelled) return;
+
+            const registry = asciidoctor.Extensions.create();
+            registry.includeProcessor(function () {
+                this.handles((target) => true);
+                this.process((doc: any, reader: any, target: string, attrs: any) => {
+                    const data = cache.get(target);
+                    if (data !== undefined && data !== "") {
+                        reader.pushInclude(data, target, target, 1, attrs);
+                    } else {
+                        reader.pushInclude(`// UNRESOLVED INCLUDE: ${target}`, target, target, 1, attrs);
+                    }
+                });
+            });
+
+            try {
+                kroki.register(registry);
+            } catch (e) {
+                console.error("Failed to register kroki:", e);
+            }
+
+            const html = asciidoctor.convert(rewrittenContent, {
+                safe: 'safe',
+                extension_registry: registry,
+                attributes: {
+                    showtitle: true,
+                    outfilesuffix: '.adoc',
+                    icons: 'font',
+                    'source-highlighter': 'highlight.js'
+                }
+            }) as string;
+
+            if (!isCancelled) {
+                setHtmlContent(html);
+            }
+        };
+
+        processAndConvert();
+
+        return () => { isCancelled = true; };
+    }, [content, filePath, fetchFileContent]);
 
     const contentRef = React.useRef<HTMLDivElement>(null);
 
@@ -61,27 +154,11 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, fil
                 hljs.highlightElement(block as HTMLElement);
             });
 
-            // Rewrite relative links to point to the correct Azure DevOps URL instead of the extension CDN
             const links = contentRef.current.querySelectorAll('a');
             links.forEach((anchor) => {
                 const href = anchor.getAttribute("href");
                 if (href && !href.startsWith("http") && !href.startsWith("#")) {
-                    let resolvedPath = href;
-                    if (!href.startsWith("/")) {
-                        const dir = filePath.substring(0, filePath.lastIndexOf("/"));
-                        resolvedPath = dir + "/" + href;
-                    }
-                    const parts = resolvedPath.split('/');
-                    const stack: string[] = [];
-                    for (const part of parts) {
-                        if (part === '..') {
-                            stack.pop();
-                        } else if (part !== '.' && part !== '') {
-                            stack.push(part);
-                        }
-                    }
-                    const finalPath = "/" + stack.join('/');
-
+                    const finalPath = resolvePath(filePath, href);
                     let newHref = "#" + finalPath;
                     try {
                         if (document.referrer) {
