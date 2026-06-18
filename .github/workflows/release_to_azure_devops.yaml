@@ -1,0 +1,91 @@
+name: Release to Azure DevOps Marketplace
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  package-and-publish:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -e {0}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v2
+        with:
+          node-version: 'lts/*'
+
+      - name: Set version (tag push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "EXT_VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Set version (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --tags
+
+          # Get the highest version tag from all tags
+          HIGHEST_TAG=$(git tag -l | grep '^v[0-9]*\.[0-9]*\.[0-9]*$' | sort -V | tail -1 || echo "v1.0.0")
+          echo "HIGHEST_TAG=${HIGHEST_TAG}" >> $GITHUB_ENV
+
+          # Extract version parts
+          IFS='.' read -ra VERSION_PARTS <<< "${HIGHEST_TAG#v}"
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+          PATCH=${VERSION_PARTS[2]}
+
+          # For PR builds, increment the patch version to ensure uniqueness
+          # This ensures we always get a higher version than any existing version
+          NEXT_PATCH=$((PATCH + 1))
+          EXT_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}"
+          echo "EXT_VERSION=${EXT_VERSION}" >> $GITHUB_ENV
+
+          NEXT_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}"
+          echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_ENV
+
+      - name: Restore npm packages
+        run: npm ci
+
+      - name: Run Tests
+        run: npm run test
+
+      - name: Update task version
+        run: node .github/workflows/update-task-version.js ${{ env.EXT_VERSION }} task.json
+
+      - name: Build task bundle
+        run: npm run build
+        
+      - name: Install tfx-cli
+        run: npm install -g tfx-cli
+
+      - name: Package Extension
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            sed -i 's/"id": "format-check"/"id": "format-check-private"/g' vss-extension.json
+            sed -i 's/"name": "Format Check dotnet"/"name": "Format Check dotnet (Private Test Version)"/g' vss-extension.json
+            tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\", \"public\": false}"
+          else
+            tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\"}"
+          fi
+        working-directory: src
+
+      - name: Publish to Azure DevOps Marketplace
+        id: publish
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            tfx extension publish --vsix ajeckmans.format-check-private-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
+          else
+            tfx extension publish --vsix ajeckmans.format-check-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
+          fi
+        working-directory: src

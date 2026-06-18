@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "asciidoc",
     "name": "AsciiDoc PR Viewer",
-    "version": "1.0.54",
+    "version": "1.0.55",
     "publisher": "ajeckmans",
     "targets": [
         {

@@ -237,6 +237,7 @@ const App: React.FC = () => {
                                                                                 <input 
                                                                                     id={`reply-box-${thread.id}`}
                                                                                     className={`threadId-${thread.id} bolt-textfield-input flex-grow`}
+                                                                                    style={{ backgroundColor: "transparent", color: "var(--text-primary-color, inherit)" }}
                                                                                     autoComplete="off" 
                                                                                     placeholder="Write a reply..." 
                                                                                     tabIndex={0} 
@@ -294,7 +295,7 @@ const App: React.FC = () => {
                                                                                 <textarea 
                                                                                     id="pr-comment-box"
                                                                                     className="bolt-textfield-input flex-grow"
-                                                                                    style={{ minHeight: "80px", resize: "vertical" }}
+                                                                                    style={{ minHeight: "80px", resize: "vertical", backgroundColor: "transparent", color: "var(--text-primary-color, inherit)" }}
                                                                                     placeholder="Add a new comment..."
                                                                                     autoFocus
                                                                                 />
