@@ -60,9 +60,6 @@ jobs:
       - name: Run Tests
         run: npm run test
 
-      - name: Update task version
-        run: node .github/workflows/update-task-version.js ${{ env.EXT_VERSION }} task.json
-
       - name: Build task bundle
         run: npm run build
         
@@ -72,20 +69,18 @@ jobs:
       - name: Package Extension
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            sed -i 's/"id": "format-check"/"id": "format-check-private"/g' vss-extension.json
-            sed -i 's/"name": "Format Check dotnet"/"name": "Format Check dotnet (Private Test Version)"/g' vss-extension.json
-            tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\", \"public\": false}"
+            sed -i 's/"id": "asciidoc"/"id": "asciidoc-private"/g' vss-extension.json
+            sed -i 's/"name": "AsciiDoc PR Viewer"/"name": "AsciiDoc PR Viewer (Private Test Version)"/g' vss-extension.json
+            tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\", \"public\": false}" --output-path ./dist/
           else
-            tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\"}"
+            tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\"}" --output-path ./dist/
           fi
-        working-directory: src
 
       - name: Publish to Azure DevOps Marketplace
         id: publish
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            tfx extension publish --vsix ajeckmans.format-check-private-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
+            tfx extension publish --vsix dist/ajeckmans.asciidoc-private-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
           else
-            tfx extension publish --vsix ajeckmans.format-check-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
+            tfx extension publish --vsix dist/ajeckmans.asciidoc-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
           fi
-        working-directory: src
