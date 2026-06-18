@@ -33,7 +33,7 @@ jobs:
           echo "EXT_VERSION=${EXT_VERSION}" >> $GITHUB_ENV
 
       - name: Restore npm packages
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Run Tests
         run: npm run test
