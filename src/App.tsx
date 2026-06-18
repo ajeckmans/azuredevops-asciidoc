@@ -157,7 +157,7 @@ const App: React.FC = () => {
                             </div>
 
                             <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
-                                <div style={{ display: "flex", flexDirection: "column", maxWidth: "814px", width: "100%", margin: "0 auto" }}>
+                                <div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
                                     {fileThreads.map(thread => (
                                         <Card key={thread.id} className="margin-bottom-16 flex-column depth-4">
                                             <div style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column" }}>

@@ -91,8 +91,23 @@ export class DevOpsService {
 
     public static async getFileContent(repositoryId: string, projectName: string, path: string): Promise<string> {
         const gitClient = getClient(GitRestClient);
-        const pr = await this.getPullRequest(repositoryId, projectName);
-        const commitId = this.getCommitIdFromPr(pr);
+        let commitId = "";
+        try {
+            const pr = await this.getPullRequest(repositoryId, projectName);
+            commitId = this.getCommitIdFromPr(pr);
+        } catch (e) {
+            // Fallback for Hub view
+            try {
+                const dataManager = await this.getDataManager();
+                if (dataManager && dataManager.version) {
+                    commitId = dataManager.version;
+                }
+            } catch (err) {}
+        }
+
+        if (!commitId) {
+            return await this.getRepoFileContent(repositoryId, projectName, path);
+        }
 
         const contentStream = await gitClient.getItemText(
             repositoryId,
@@ -111,8 +126,13 @@ export class DevOpsService {
 
     public static async getPreviousFileContent(repositoryId: string, projectName: string, path: string): Promise<string> {
         const gitClient = getClient(GitRestClient);
-        const pr = await this.getPullRequest(repositoryId, projectName);
-        const commitId = pr.lastMergeTargetCommit ? pr.lastMergeTargetCommit.commitId : "";
+        let commitId = "";
+        try {
+            const pr = await this.getPullRequest(repositoryId, projectName);
+            commitId = pr.lastMergeTargetCommit ? pr.lastMergeTargetCommit.commitId : "";
+        } catch (e) {
+            return ""; // Hub view, no previous content
+        }
 
         if (!commitId) return "";
 
