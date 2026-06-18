@@ -11,7 +11,7 @@ import { Tree } from "azure-devops-ui/TreeEx";
 import { TreeItemProvider, ITreeItem, ITreeItemEx } from "azure-devops-ui/Utilities/TreeItemProvider";
 import { ITreeColumn } from "azure-devops-ui/Components/TreeEx/Tree.Props";
 import { renderExpandableTreeCell } from "azure-devops-ui/TreeEx";
-import { ISimpleListCell } from "azure-devops-ui/List";
+import { ISimpleListCell, ListSelection } from "azure-devops-ui/List";
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
 import { ISimpleTableCell } from "azure-devops-ui/Table";
 
@@ -83,6 +83,32 @@ export default function HubApp() {
     const [expandedNodes, setExpandedNodes] = React.useState<{ [key: string]: boolean }>({});
     
     const [itemProvider] = React.useState(new TreeItemProvider<HubItemData>());
+    const [selection] = React.useState(new ListSelection({ selectOnFocus: false, multiSelect: false }));
+
+    React.useEffect(() => {
+        if (!selectedFile) {
+            selection.clear();
+            return;
+        }
+        
+        let foundIndex = -1;
+        for (let i = 0; i < itemProvider.value.length; i++) {
+            const item = itemProvider.value[i];
+            if (item && item.underlyingItem && item.underlyingItem.data) {
+                const data = item.underlyingItem.data;
+                if (!data.isFolder && data.repoId === selectedFile.repoId && data.path === selectedFile.path) {
+                    foundIndex = i;
+                    break;
+                }
+            }
+        }
+        
+        if (foundIndex >= 0) {
+            selection.select(foundIndex, 1, true); // 1 = count, true = clear existing selection
+        } else {
+            selection.clear();
+        }
+    }, [selectedFile, itemProvider.length, selection, itemProvider]);
 
     React.useEffect(() => {
         async function load() {
@@ -294,6 +320,7 @@ export default function HubApp() {
                         <Tree<HubItemData>
                             columns={columns}
                             itemProvider={itemProvider as any}
+                            selection={selection as any}
                             scrollable={true}
                             showHeader={false}
                             showLines={false}

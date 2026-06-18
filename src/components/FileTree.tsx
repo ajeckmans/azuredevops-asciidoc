@@ -3,7 +3,7 @@ import { Tree } from "azure-devops-ui/TreeEx";
 import { TreeItemProvider, ITreeItem, ITreeItemEx } from "azure-devops-ui/Utilities/TreeItemProvider";
 import { ITreeColumn } from "azure-devops-ui/Components/TreeEx/Tree.Props";
 import { renderExpandableTreeCell } from "azure-devops-ui/TreeEx";
-import { ISimpleListCell } from "azure-devops-ui/List";
+import { ISimpleListCell, ListSelection } from "azure-devops-ui/List";
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
 import { ISimpleTableCell } from "azure-devops-ui/Table";
 
@@ -116,6 +116,32 @@ function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<Fi
 
 export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile, onFileSelected, onAddComment }) => {
     const [itemProvider] = React.useState(new TreeItemProvider<FileItemData>());
+    const [selection] = React.useState(new ListSelection({ selectOnFocus: false, multiSelect: false }));
+
+    React.useEffect(() => {
+        if (!selectedFile) {
+            selection.clear();
+            return;
+        }
+        
+        let foundIndex = -1;
+        for (let i = 0; i < itemProvider.value.length; i++) {
+            const item = itemProvider.value[i];
+            if (item && item.underlyingItem && item.underlyingItem.data) {
+                const data = item.underlyingItem.data;
+                if (!data.isFolder && data.path === selectedFile) {
+                    foundIndex = i;
+                    break;
+                }
+            }
+        }
+        
+        if (foundIndex >= 0) {
+            selection.select(foundIndex, 1, true);
+        } else {
+            selection.clear();
+        }
+    }, [selectedFile, itemProvider.value.length, selection, itemProvider]);
 
     React.useEffect(() => {
         const items = buildTreeItems(files, threads);
@@ -194,6 +220,7 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile
             <Tree<FileItemData>
                 columns={columns}
                 itemProvider={itemProvider as any}
+                selection={selection as any}
                 scrollable={false}
                 showHeader={false}
                 showLines={false}
