@@ -19,5 +19,8 @@ You can install this extension from the Visual Studio Marketplace.
 3. Run `npm run test` to run the Jest test suite.
 4. Run `npm run build` to build the production VSIX bundle assets.
 
+## Disclaimer
+This extension is a third-party open-source project and is **not** officially affiliated with, endorsed by, or sponsored by the Eclipse Foundation or the AsciiDoc Working Group.
+
 ## License
 MIT
