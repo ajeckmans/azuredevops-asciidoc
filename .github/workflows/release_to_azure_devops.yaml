@@ -29,7 +29,21 @@ jobs:
 
       - name: Set version
         run: |
-          EXT_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            PUBLISHED_JSON=$(npx tfx extension show --publisher ajeckmans --extension-id asciidoc --token ${{ secrets.AZURE_DEVOPS_PAT }} --json || echo "{}")
+            PUBLISHED_VERSION=$(echo "$PUBLISHED_JSON" | jq -r '.versions[0].version')
+            
+            if [ -z "$PUBLISHED_VERSION" ] || [ "$PUBLISHED_VERSION" == "null" ]; then
+              PUBLISHED_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
+            fi
+            
+            IFS='.' read -ra V_PARTS <<< "$PUBLISHED_VERSION"
+            NEXT_PATCH=$((${V_PARTS[2]} + 1))
+            EXT_VERSION="${V_PARTS[0]}.${V_PARTS[1]}.${NEXT_PATCH}"
+          else
+            EXT_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
+          fi
+          
           echo "EXT_VERSION=${EXT_VERSION}" >> $GITHUB_ENV
 
       - name: Restore npm packages
