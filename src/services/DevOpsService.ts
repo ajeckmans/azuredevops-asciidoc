@@ -36,26 +36,44 @@ export class DevOpsService {
     public static async getAsciiDocFiles(repositoryId: string, projectName: string): Promise<any[]> {
         const gitClient = getClient(GitRestClient);
         const prId = await this.getPullRequestId();
-        const pr = await gitClient.getPullRequestById(prId, projectName);
         
-        const commitId = this.getCommitIdFromPr(pr);
-        
-        const items = await gitClient.getItems(
-            repositoryId,
-            projectName,
-            "/",
-            120 as any, // recursionLevel (Full)
-            true, // includeContentMetadata
-            false, // latestProcessedChange
-            false, // download
-            true, // includeLinks
-            { versionType: 2, version: commitId, versionOptions: 0 } as any // versionDescriptor
-        );
+        try {
+            const iterations = await gitClient.getPullRequestIterations(repositoryId, prId, projectName);
+            if (!iterations || iterations.length === 0) {
+                return [];
+            }
+            const latestIterationId = Math.max(...iterations.map((i: any) => i.id));
+            
+            const changesResponse = await gitClient.getPullRequestIterationChanges(repositoryId, prId, latestIterationId, projectName, 2000, 0, 0);
+            
+            if (!changesResponse || !changesResponse.changeEntries) {
+                return [];
+            }
 
-        return items.filter(item => 
-            !item.isFolder && 
-            (item.path.endsWith(".adoc") || item.path.endsWith(".asciidoc"))
-        );
+            const adocFiles = changesResponse.changeEntries.filter((entry: any) => {
+                const item = entry.item;
+                if (!item || item.isFolder) return false;
+                
+                // ChangeType: 16 is Delete. 8 is Rename. 1 is Add. 2 is Edit.
+                // We want to exclude deleted files (changeType === 16 or any combination containing the Delete bit).
+                const isDeleted = (entry.changeType & 16) === 16;
+                if (isDeleted) {
+                     return false;
+                }
+
+                const path = item.path || "";
+                return path.toLowerCase().endsWith(".adoc") || path.toLowerCase().endsWith(".asciidoc");
+            }).map((entry: any) => entry.item);
+
+            // De-duplicate in case of multiple changes to same file path in weird scenarios
+            const uniqueFiles = new Map<string, any>();
+            adocFiles.forEach((file: any) => uniqueFiles.set(file.path, file));
+
+            return Array.from(uniqueFiles.values());
+        } catch (e) {
+            console.error("Failed to get PR iteration changes", e);
+            return [];
+        }
     }
 
     public static async getFileContent(repositoryId: string, projectName: string, path: string): Promise<string> {
