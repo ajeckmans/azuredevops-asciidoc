@@ -22,12 +22,12 @@ jobs:
         shell: bash -e {0}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Node.js environment
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
+          node-version: '20'
 
       - name: Install tfx-cli
         run: npm install -g tfx-cli
@@ -66,7 +66,9 @@ jobs:
             # For PRs, modify the manifest and publish directly using --rev-version to auto-increment privately
             sed -i 's/"id": "asciidoc"/"id": "asciidoc-private"/g' vss-extension.json
             sed -i 's/"name": "AsciiDoc PR Viewer"/"name": "AsciiDoc PR Viewer (Private Test Version)"/g' vss-extension.json
-            tfx extension publish --manifests vss-extension.json --override "{\"public\": false}" --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }} --rev-version
+            tfx extension create --manifests vss-extension.json --override "{\"public\": false}" --rev-version
+            NEW_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
+            tfx extension publish --vsix ajeckmans.asciidoc-private-${NEW_VERSION}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
           else
             # For main branch, create the VSIX locally so it can be attached to the GitHub Release
             tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\"}" --output-path ./dist/
