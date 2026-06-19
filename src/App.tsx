@@ -125,6 +125,20 @@ const App: React.FC = () => {
         }
     };
 
+    // ⚡ Bolt: Memoize fetchFileContent to prevent expensive AsciiDocRenderer re-renders
+    // on unrelated state changes (like adding comments). Expected impact: Eliminates
+    // synchronous main-thread blocking operations when typing/adding comments.
+    const fetchFileContent = React.useCallback(async (path: string) => {
+        try {
+            const repoId = await DevOpsService.getRepositoryId();
+            const project = await DevOpsService.getProjectName();
+            return await DevOpsService.getFileContent(repoId, project, path);
+        } catch (e) {
+            console.error("Failed to fetch included file:", path, e);
+            return null;
+        }
+    }, []);
+
     const fileThreads = selectedFile ? threads.filter(t => t.threadContext.filePath === selectedFile) : [];
 
     return (
@@ -351,16 +365,7 @@ const App: React.FC = () => {
                                             previousContent={previousFileContent}
                                             filePath={selectedFile} 
                                             onLinkClick={handleFileSelected}
-                                            fetchFileContent={async (path) => {
-                                                try {
-                                                    const repoId = await DevOpsService.getRepositoryId();
-                                                    const project = await DevOpsService.getProjectName();
-                                                    return await DevOpsService.getFileContent(repoId, project, path);
-                                                } catch (e) {
-                                                    console.error("Failed to fetch included file:", path, e);
-                                                    return null;
-                                                }
-                                            }}
+                                            fetchFileContent={fetchFileContent}
                                         />
                                     </div>
                                 </div>
