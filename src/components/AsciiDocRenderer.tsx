@@ -7,6 +7,7 @@ import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './AsciiDocRenderer.css';
+import DOMPurify from 'dompurify';
 
 const asciidoctor = Asciidoctor();
 try {
@@ -151,8 +152,11 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
             });
             const html = doc.convert() as string;
 
+            // Sanitize the HTML to prevent XSS
+            const sanitizedHtml = DOMPurify.sanitize(html);
+
             if (!isCancelled) {
-                setHtmlContent(html);
+                setHtmlContent(sanitizedHtml);
             }
         };
 
