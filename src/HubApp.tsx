@@ -273,6 +273,28 @@ export default function HubApp() {
         }
     };
 
+    // ⚡ Bolt: Memoize fetchFileContent to prevent expensive AsciiDocRenderer re-renders
+    // on unrelated state changes (like expanding/collapsing repository tree nodes).
+    // Expected impact: Eliminates synchronous main-thread blocking operations
+    // when navigating the tree.
+    const fetchFileContent = React.useCallback(async (path: string) => {
+        if (!selectedFile) return null;
+        try {
+            const projectName = await DevOpsService.getProjectName();
+            return await DevOpsService.getRepoFileContent(selectedFile.repoId, projectName, path);
+        } catch (e) {
+            console.error("Failed to fetch included file:", path, e);
+            return null;
+        }
+    }, [selectedFile]);
+
+    // ⚡ Bolt: Memoize onLinkClick as well for the same reason.
+    const onLinkClick = React.useCallback((newPath: string) => {
+        if (selectedFile) {
+            handleFileSelected(selectedFile.repoId, newPath);
+        }
+    }, [selectedFile, handleFileSelected]);
+
     const columns = React.useMemo((): ITreeColumn<HubItemData>[] => [
         {
             id: "name",
@@ -364,18 +386,8 @@ export default function HubApp() {
                                     <AsciiDocRenderer 
                                         content={fileContent} 
                                         filePath={selectedFile.path} 
-                                        onLinkClick={(newPath) => {
-                                            handleFileSelected(selectedFile.repoId, newPath);
-                                        }}
-                                        fetchFileContent={async (path) => {
-                                            try {
-                                                const projectName = await DevOpsService.getProjectName();
-                                                return await DevOpsService.getRepoFileContent(selectedFile.repoId, projectName, path);
-                                            } catch (e) {
-                                                console.error("Failed to fetch included file:", path, e);
-                                                return null;
-                                            }
-                                        }}
+                                        onLinkClick={onLinkClick}
+                                        fetchFileContent={fetchFileContent}
                                     />
                                 </div>
                             </div>
