@@ -40,7 +40,9 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
     const [htmlContent, setHtmlContent] = React.useState<string>("");
 
     React.useEffect(() => {
+        let isMounted = true;
         const updateTheme = () => {
+            if (!isMounted) return;
             const textPrimary = getComputedStyle(document.body).getPropertyValue('--text-primary-color');
             if (textPrimary && (textPrimary.includes('255') || textPrimary.includes('fff') || textPrimary.toLowerCase().includes('rgba(255') || textPrimary.includes('250'))) {
                 setIsDarkTheme(true);
@@ -49,10 +51,14 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
             }
         };
 
-        setTimeout(updateTheme, 100);
+        const timer = setTimeout(updateTheme, 100);
 
         window.addEventListener("themeApplied", updateTheme);
-        return () => window.removeEventListener("themeApplied", updateTheme);
+        return () => {
+            isMounted = false;
+            clearTimeout(timer);
+            window.removeEventListener("themeApplied", updateTheme);
+        };
     }, []);
 
     React.useEffect(() => {
