@@ -2,6 +2,12 @@
 
 A native-feeling Azure DevOps extension that seamlessly renders AsciiDoc (`.adoc`, `.asciidoc`) files directly in Pull Requests and the Repository Hub.
 
+## Screenshots
+
+![Pull Request View](images/PR-screenshot.png)
+
+![Repository Hub View](images/Hub-view.png)
+
 ## Features
 - **Pull Request Integration:** Adds a dedicated "AsciiDoc" tab in your Pull Requests showing rendered `.adoc` files that were modified.
 - **Repository Hub Integration:** Browse and render `.adoc` files natively within the Repos Hub.
