@@ -37,7 +37,7 @@ describe("AsciiDocRenderer", () => {
         mockIncludeProcessor.mockClear();
     });
 
-    it("calls asciidoctor.load with safe: 'safe' mode and sourcemap: true", async () => {
+    it("calls asciidoctor.load with safe: 'secure' mode and sourcemap: true", async () => {
         const content = "== Test Content";
         render(<AsciiDocRenderer content={content} filePath="/some/path.adoc" />);
 
@@ -46,7 +46,7 @@ describe("AsciiDocRenderer", () => {
         });
 
         expect(mockLoad).toHaveBeenCalledWith(content, expect.objectContaining({
-            safe: 'safe',
+            safe: 'secure',
             sourcemap: true
         }));
     });

@@ -1,0 +1,4 @@
+## 2024-05-24 - [Fix XSS in AsciiDoc Renderer]
+**Vulnerability:** AsciiDoc files were rendered using `dangerouslySetInnerHTML` while Asciidoctor's safe mode was set to `'safe'`, allowing execution of malicious scripts via attributes or macros (e.g., `+++<script>alert(1)</script>+++`).
+**Learning:** Asciidoctor's `'safe'` mode is not sufficient to prevent XSS when rendering user-provided content. The safe mode must be set to `'secure'` to disable dangerous macros, and the rendered HTML should be sanitized using a robust library like DOMPurify before injecting it into the DOM.
+**Prevention:** Always use `safe: 'secure'` for Asciidoctor when rendering untrusted content. Additionally, consistently apply a sanitization library like DOMPurify on any HTML string before rendering it with `dangerouslySetInnerHTML`.
