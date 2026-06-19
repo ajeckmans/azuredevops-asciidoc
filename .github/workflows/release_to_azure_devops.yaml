@@ -51,7 +51,7 @@ jobs:
           fi
 
           if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.event_name }}" == "pull_request" ]]; then
-            PUBLISHED_JSON=$(tfx extension show --publisher ajeckmans --extension-id $TARGET_EXT_ID --token ${{ secrets.AZURE_DEVOPS_PAT }} --json || echo "{}")
+            PUBLISHED_JSON=$(tfx extension show --publisher ajeckmans --extension-id asciidoc --token ${{ secrets.AZURE_DEVOPS_PAT }} --json || echo "{}")
             PUBLISHED_VERSION=$(echo "$PUBLISHED_JSON" | jq -r '.versions[0].version')
             
             if [ -z "$PUBLISHED_VERSION" ] || [ "$PUBLISHED_VERSION" == "null" ]; then
