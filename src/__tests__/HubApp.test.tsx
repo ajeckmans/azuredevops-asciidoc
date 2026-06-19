@@ -10,7 +10,8 @@ jest.mock('../services/DevOpsService');
 jest.mock('azure-devops-extension-sdk', () => ({
     getService: jest.fn().mockResolvedValue({
         getHash: jest.fn().mockResolvedValue("path=/docs/test.adoc"),
-        getQueryParams: jest.fn().mockResolvedValue({})
+        getQueryParams: jest.fn().mockResolvedValue({}),
+        setQueryParams: jest.fn()
     }),
     init: jest.fn().mockResolvedValue(true),
     ready: jest.fn().mockResolvedValue(true)
@@ -91,7 +92,8 @@ describe('HubApp', () => {
         // Set up mock to simulate hash containing a path and repo
         (SDK.getService as jest.Mock).mockResolvedValue({
             getHash: jest.fn().mockResolvedValue(""),
-            getQueryParams: jest.fn().mockResolvedValue({ repoId: 'repo-1', path: '/docs/test.adoc' })
+            getQueryParams: jest.fn().mockResolvedValue({ repoId: 'repo-1', path: '/docs/test.adoc' }),
+            setQueryParams: jest.fn()
         });
         
         render(<HubApp />);
@@ -105,7 +107,8 @@ describe('HubApp', () => {
     it('handles file tree node selection', async () => {
         (SDK.getService as jest.Mock).mockResolvedValue({
             getHash: jest.fn().mockResolvedValue(""),
-            getQueryParams: jest.fn().mockResolvedValue({})
+            getQueryParams: jest.fn().mockResolvedValue({}),
+            setQueryParams: jest.fn()
         });
 
         const { container } = render(<HubApp />);
@@ -125,7 +128,8 @@ describe('HubApp', () => {
     it('handles folder tree node selection', async () => {
         (SDK.getService as jest.Mock).mockResolvedValue({
             getHash: jest.fn().mockResolvedValue(""),
-            getQueryParams: jest.fn().mockResolvedValue({})
+            getQueryParams: jest.fn().mockResolvedValue({}),
+            setQueryParams: jest.fn()
         });
 
         render(<HubApp />);
@@ -145,7 +149,8 @@ describe('HubApp', () => {
     it('handles repo tree node selection', async () => {
         (SDK.getService as jest.Mock).mockResolvedValue({
             getHash: jest.fn().mockResolvedValue(""),
-            getQueryParams: jest.fn().mockResolvedValue({})
+            getQueryParams: jest.fn().mockResolvedValue({}),
+            setQueryParams: jest.fn()
         });
 
         render(<HubApp />);
