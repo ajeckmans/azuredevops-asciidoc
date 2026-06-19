@@ -34,19 +34,31 @@ jobs:
 
       - name: Set version
         run: |
+          BASE_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             PUBLISHED_JSON=$(tfx extension show --publisher ajeckmans --extension-id asciidoc --token ${{ secrets.AZURE_DEVOPS_PAT }} --json || echo "{}")
             PUBLISHED_VERSION=$(echo "$PUBLISHED_JSON" | jq -r '.versions[0].version')
             
             if [ -z "$PUBLISHED_VERSION" ] || [ "$PUBLISHED_VERSION" == "null" ]; then
-              PUBLISHED_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
+              PUBLISHED_VERSION=$BASE_VERSION
             fi
             
             IFS='.' read -ra V_PARTS <<< "$PUBLISHED_VERSION"
             NEXT_PATCH=$((${V_PARTS[2]} + 1))
             EXT_VERSION="${V_PARTS[0]}.${V_PARTS[1]}.${NEXT_PATCH}"
+            echo "EXT_ID=asciidoc" >> $GITHUB_ENV
+            echo "EXT_PUBLIC=true" >> $GITHUB_ENV
+            echo "EXT_NAME=AsciiDoc PR Viewer" >> $GITHUB_ENV
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            EXT_VERSION="${BASE_VERSION}.${{ github.run_number }}"
+            echo "EXT_ID=asciidoc-private" >> $GITHUB_ENV
+            echo "EXT_PUBLIC=false" >> $GITHUB_ENV
+            echo "EXT_NAME=AsciiDoc PR Viewer (Private)" >> $GITHUB_ENV
           else
-            EXT_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
+            EXT_VERSION="${BASE_VERSION}.${{ github.run_number }}"
+            echo "EXT_ID=asciidoc" >> $GITHUB_ENV
+            echo "EXT_PUBLIC=false" >> $GITHUB_ENV
+            echo "EXT_NAME=AsciiDoc PR Viewer" >> $GITHUB_ENV
           fi
           
           echo "EXT_VERSION=${EXT_VERSION}" >> $GITHUB_ENV
@@ -62,12 +74,12 @@ jobs:
 
       - name: Package Extension
         run: |
-          tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\"}" --output-path ./dist/
+          tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\", \"id\": \"${{ env.EXT_ID }}\", \"public\": ${{ env.EXT_PUBLIC }}, \"name\": \"${{ env.EXT_NAME }}\"}" --output-path ./dist/
 
       - name: Publish Extension
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
         run: |
-          tfx extension publish --vsix dist/ajeckmans.asciidoc-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
+          tfx extension publish --vsix dist/ajeckmans.${{ env.EXT_ID }}-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
 
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
