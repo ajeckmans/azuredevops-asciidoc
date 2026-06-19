@@ -22,10 +22,10 @@ jobs:
         shell: bash -e {0}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Node.js environment
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
 
@@ -34,21 +34,23 @@ jobs:
 
       - name: Set version
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            PUBLISHED_JSON=$(tfx extension show --publisher ajeckmans --extension-id asciidoc --token ${{ secrets.AZURE_DEVOPS_PAT }} --json || echo "{}")
-            PUBLISHED_VERSION=$(echo "$PUBLISHED_JSON" | jq -r '.versions[0].version')
-            
-            if [ -z "$PUBLISHED_VERSION" ] || [ "$PUBLISHED_VERSION" == "null" ]; then
-              PUBLISHED_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
-            fi
-            
-            IFS='.' read -ra V_PARTS <<< "$PUBLISHED_VERSION"
-            NEXT_PATCH=$((${V_PARTS[2]} + 1))
-            EXT_VERSION="${V_PARTS[0]}.${V_PARTS[1]}.${NEXT_PATCH}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            EXTENSION_ID="asciidoc-private"
           else
-            EXT_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
+            EXTENSION_ID="asciidoc"
           fi
           
+          PUBLISHED_JSON=$(tfx extension show --publisher ajeckmans --extension-id $EXTENSION_ID --token ${{ secrets.AZURE_DEVOPS_PAT }} --json || echo "{}")
+          PUBLISHED_VERSION=$(echo "$PUBLISHED_JSON" | jq -r '.versions[0].version')
+
+          if [ -z "$PUBLISHED_VERSION" ] || [ "$PUBLISHED_VERSION" == "null" ]; then
+            PUBLISHED_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
+          fi
+
+          IFS='.' read -ra V_PARTS <<< "$PUBLISHED_VERSION"
+          NEXT_PATCH=$((${V_PARTS[2]} + 1))
+          EXT_VERSION="${V_PARTS[0]}.${V_PARTS[1]}.${NEXT_PATCH}"
+
           echo "EXT_VERSION=${EXT_VERSION}" >> $GITHUB_ENV
 
       - name: Restore npm packages
@@ -63,10 +65,10 @@ jobs:
       - name: Package & Publish Extension
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # For PRs, modify the manifest and publish directly using --rev-version to auto-increment privately
+            # For PRs, modify the manifest and publish directly
             sed -i 's/"id": "asciidoc"/"id": "asciidoc-private"/g' vss-extension.json
             sed -i 's/"name": "AsciiDoc PR Viewer"/"name": "AsciiDoc PR Viewer (Private Test Version)"/g' vss-extension.json
-            tfx extension publish --manifests vss-extension.json --override "{\"public\": false}" --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }} --rev-version
+            tfx extension publish --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\", \"public\": false}" --token ${{ secrets.AZURE_DEVOPS_PAT }} --share-with ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
           else
             # For main branch, create the VSIX locally so it can be attached to the GitHub Release
             tfx extension create --manifests vss-extension.json --override "{\"version\": \"${{ env.EXT_VERSION }}\"}" --output-path ./dist/
