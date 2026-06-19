@@ -37,7 +37,7 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^12.1.5",
     "@types/diff": "^5.2.1",
-    "@types/dompurify": "^3.0.5",
+    "@types/dompurify": "^3.2.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.9.3",
     "@types/react": "^16.14.70",
