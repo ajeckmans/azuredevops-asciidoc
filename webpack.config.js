@@ -50,5 +50,17 @@ module.exports = {
             template: "./src/action.html",
             chunks: ["action"]
         })
-    ]
+    ],
+    optimization: {
+        splitChunks: {
+            chunks: "all"
+        }
+    },
+    performance: {
+        maxAssetSize: 5242880, // 5 MiB
+        maxEntrypointSize: 5242880, // 5 MiB
+        assetFilter: function(assetFilename) {
+            return !assetFilename.endsWith('.woff2');
+        }
+    }
 };
