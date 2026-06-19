@@ -204,12 +204,12 @@ const App: React.FC = () => {
                                                                                                 </div>
                                                                                             </div>
                                                                                             <div className="flex-row flex-grow flex-noshrink justify-end flex-center">
-                                                                                                <button className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
+                                                                                                <button className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button" aria-label="Copy link to comment" title="Copy link to comment">
                                                                                                     <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--Link medium"></span></span>
                                                                                                 </button>
                                                                                                 {isFirst && (
                                                                                                     <>
-                                                                                                        <button className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
+                                                                                                        <button className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button" aria-label="Mark thread as resolved" title="Mark thread as resolved">
                                                                                                             <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--PageCheckedin medium"></span></span>
                                                                                                         </button>
                                                                                                         <div className="bolt-dropdown-expandable bolt-expandable-button inline-flex-row">

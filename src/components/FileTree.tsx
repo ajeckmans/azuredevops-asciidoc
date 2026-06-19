@@ -183,6 +183,17 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile
                                             e.stopPropagation();
                                             onAddComment(data.path);
                                         }}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={`Add comment to ${data.name.text}`}
+                                        title={`Add comment to ${data.name.text}`}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                onAddComment(data.path);
+                                            }
+                                        }}
                                     >
                                         <div className="bolt-pill-content text-ellipsis">+</div>
                                     </div>
