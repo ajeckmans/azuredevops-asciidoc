@@ -179,9 +179,19 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile
                                     <div 
                                         className={`bolt-pill flex-row flex-center outlined compact tree-plus-btn ${isSelected ? 'is-selected' : ''}`}
                                         style={{ cursor: "pointer", width: "24px", height: "24px" }}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label="Add comment"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             onAddComment(data.path);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onAddComment(data.path);
+                                            }
                                         }}
                                     >
                                         <div className="bolt-pill-content text-ellipsis">+</div>
