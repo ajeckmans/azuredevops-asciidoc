@@ -29,6 +29,19 @@ function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<Fi
     const root: ITreeItem<FileItemData>[] = [];
     const nodeMap = new Map<string, ITreeItem<FileItemData>>();
 
+    // ⚡ Bolt: Replace O(n²) nested loop with O(n) hash map lookup
+    // Groups threads by file path once to prevent O(N) filtering inside the file parts loop
+    const threadsByPath = new Map<string, any[]>();
+    threads.forEach(t => {
+        if (t.threadContext && t.threadContext.filePath) {
+            const path = t.threadContext.filePath;
+            if (!threadsByPath.has(path)) {
+                threadsByPath.set(path, []);
+            }
+            threadsByPath.get(path)!.push(t);
+        }
+    });
+
     files.forEach(file => {
         const cleanPath = file.path.startsWith("/") ? file.path.substring(1) : file.path;
         const parts = cleanPath.split("/");
@@ -63,7 +76,7 @@ function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<Fi
                 existingNode = newNode;
                 
                 if (!isFolder) {
-                    const fileThreads = threads.filter(t => t.threadContext && t.threadContext.filePath === nodePath);
+                    const fileThreads = threadsByPath.get(nodePath) || [];
                     if (fileThreads.length > 0) {
                         existingNode.childItems = fileThreads.map(thread => {
                             const firstComment = thread.comments && thread.comments[0] ? thread.comments[0] : null;

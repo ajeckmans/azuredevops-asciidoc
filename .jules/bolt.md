@@ -1,3 +1,6 @@
 ## 2024-05-18 - [Preventing Expensive Re-renders with Callback Memoization]
 **Learning:** Passing inline arrow functions (like `fetchFileContent` or `onLinkClick`) as props to components that use them in `useEffect` dependency arrays (like `AsciiDocRenderer`) causes the effect to re-run on every render of the parent component. In this codebase, `AsciiDocRenderer` performs an expensive, synchronous `asciidoctor.load().convert()` operation. When parent state changes (e.g., expanding a folder in the file tree or toggling a comment box), the inline function identity changes, triggering the `useEffect` and causing a costly re-parse of the AsciiDoc document, blocking the main thread.
 **Action:** Always wrap functions passed to `AsciiDocRenderer` (and similar components with expensive effects) in `React.useCallback` to preserve function identity across renders unless their dependencies actually change.
+## 2024-05-18 - [O(n) Thread Resolution Optimization]
+**Learning:** In heavily commented pull requests with large directory trees, calculating comment threads inside the tree rendering loop causes O(n²) performance scaling which blocks the main thread.
+**Action:** Pre-compute maps to perform O(1) lookups during tree generation to achieve O(n) scaling.
