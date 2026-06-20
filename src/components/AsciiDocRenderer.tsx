@@ -9,6 +9,19 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import './AsciiDocRenderer.css';
 import DOMPurify from 'dompurify';
 
+DOMPurify.addHook('afterSanitizeAttributes', function(node) {
+    if (node.tagName && node.tagName.toLowerCase() === 'a') {
+        const href = node.getAttribute('href');
+        // Only set target="_blank" for external links
+        if (href && (href.startsWith('http') || href.startsWith('//'))) {
+            node.setAttribute('target', '_blank');
+            node.setAttribute('rel', 'noopener noreferrer');
+        } else {
+            node.removeAttribute('target');
+        }
+    }
+});
+
 const asciidoctor = Asciidoctor();
 try {
     kroki.register(asciidoctor.Extensions);
@@ -153,7 +166,7 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
             const html = doc.convert() as string;
 
             // Sanitize the HTML to prevent XSS
-            const sanitizedHtml = DOMPurify.sanitize(html);
+            const sanitizedHtml = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
 
             if (!isCancelled) {
                 setHtmlContent(sanitizedHtml);
