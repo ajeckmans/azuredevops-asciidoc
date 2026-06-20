@@ -218,16 +218,16 @@ const App: React.FC = () => {
                                                                                                 </div>
                                                                                             </div>
                                                                                             <div className="flex-row flex-grow flex-noshrink justify-end flex-center">
-                                                                                                <button className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
+                                                                                                <button aria-label="Copy link to comment" className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
                                                                                                     <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--Link medium"></span></span>
                                                                                                 </button>
                                                                                                 {isFirst && (
                                                                                                     <>
-                                                                                                        <button className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
+                                                                                                        <button aria-label="Resolve thread" className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
                                                                                                             <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--PageCheckedin medium"></span></span>
                                                                                                         </button>
                                                                                                         <div className="bolt-dropdown-expandable bolt-expandable-button inline-flex-row">
-                                                                                                            <button aria-expanded="false" aria-haspopup="true" className="bolt-button enabled subtle bolt-focus-treatment" role="button" tabIndex={0} type="button">
+                                                                                                            <button aria-label="Thread status" aria-expanded="false" aria-haspopup="true" className="bolt-button enabled subtle bolt-focus-treatment" role="button" tabIndex={0} type="button">
                                                                                                                 <div className="bolt-dropdown-expandable-button-label justify-start flex-grow text-ellipsis">Active</div>
                                                                                                                 <span className="fluent-icons-enabled"><span aria-hidden="true" className="icon-right font-weight-normal flex-noshrink fabric-icon ms-Icon--ChevronDownMed small"></span></span>
                                                                                                             </button>
