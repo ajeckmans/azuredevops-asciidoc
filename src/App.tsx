@@ -73,7 +73,8 @@ const App: React.FC = () => {
         init();
     }, []);
 
-    const handleFileSelected = async (path: string) => {
+    // ⚡ Bolt: Memoize handleFileSelected to prevent FileTree and AsciiDocRenderer from re-rendering on parent state updates
+    const handleFileSelected = React.useCallback(async (path: string) => {
         if (selectedFile !== path) {
             setSelectedFile(path);
             setAddingCommentPath(null);
@@ -94,12 +95,13 @@ const App: React.FC = () => {
                 setPreviousFileContent("");
             }
         }
-    };
+    }, [selectedFile]);
 
-    const handleAddComment = (path: string) => {
+    // ⚡ Bolt: Memoize handleAddComment to prevent FileTree from re-rendering on parent state updates
+    const handleAddComment = React.useCallback((path: string) => {
         handleFileSelected(path);
         setAddingCommentPath(path);
-    };
+    }, [handleFileSelected]);
 
     const handleCommentSubmit = async (filePath: string, comment: string) => {
         try {

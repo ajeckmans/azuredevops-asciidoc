@@ -4,3 +4,6 @@
 ## 2024-05-18 - [O(n) Thread Resolution Optimization]
 **Learning:** In heavily commented pull requests with large directory trees, calculating comment threads inside the tree rendering loop causes O(n²) performance scaling which blocks the main thread.
 **Action:** Pre-compute maps to perform O(1) lookups during tree generation to achieve O(n) scaling.
+## 2024-05-18 - [Preventing Component Re-renders with React.memo]
+**Learning:** Wrapping complex UI components like `FileTree` and `AsciiDocRenderer` in `React.memo` effectively prevents them from re-rendering when unrelated state in a parent component (e.g. typing in an input field) changes. However, this is only effective when coupled with memoization of callback props passed to the child component.
+**Action:** When working on performance improvements that target React components that perform expensive rendering, use `React.memo` to memoize component definition and `React.useCallback` for functions passed as props. Add comments to explain why the optimizations are needed to avoid accidentally undoing them in the future.
