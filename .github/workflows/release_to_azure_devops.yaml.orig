@@ -35,7 +35,7 @@ jobs:
       - name: Set version
         run: |
           BASE_VERSION=$(grep -o '"version": *"[^"]*"' vss-extension.json | grep -o '[0-9.]*' | head -1)
-          
+
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             TARGET_EXT_ID="asciidoc"
             EXT_PUBLIC="true"
@@ -53,13 +53,13 @@ jobs:
           if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.event_name }}" == "pull_request" ]]; then
             PUBLISHED_JSON=$(tfx extension show --publisher ajeckmans --extension-id asciidoc --token ${{ secrets.AZURE_DEVOPS_PAT }} --json || echo "{}")
             PUBLISHED_VERSION=$(echo "$PUBLISHED_JSON" | jq -r '.versions[0].version')
-            
+
             if [ -z "$PUBLISHED_VERSION" ] || [ "$PUBLISHED_VERSION" == "null" ]; then
               PUBLISHED_VERSION=$BASE_VERSION
             fi
-            
+
             IFS='.' read -ra V_PARTS <<< "$PUBLISHED_VERSION"
-            
+
             if [[ "${{ github.event_name }}" == "pull_request" ]]; then
               EXT_VERSION="${V_PARTS[0]}.${V_PARTS[1]}.${V_PARTS[2]}.${{ github.run_number }}"
             else
@@ -91,7 +91,7 @@ jobs:
       - name: Publish Extension
         if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
         run: |
-          tfx extension publish --vsix dist/ajeckmans.${{ env.EXT_ID }}-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --no-wait-validation
+          tfx extension publish --vsix dist/ajeckmans.${{ env.EXT_ID }}-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
 
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
