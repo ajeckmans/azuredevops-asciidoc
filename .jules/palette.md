@@ -1,3 +1,6 @@
 ## 2024-06-20 - Keyboard Accessibility and ARIA Labels for Custom Interactive Elements
 **Learning:** Adding `onClick` handlers to `<div>` elements doesn't make them keyboard accessible. Custom icon-only buttons need descriptive `aria-label` attributes to provide context to screen reader users. In `src/components/FileTree.tsx`, the `+` button was missing keyboard events. In `src/App.tsx`, comment action buttons lacked accessible names.
 **Action:** Always include `role="button"`, `tabIndex={0}`, an appropriate `aria-label`, and `onKeyDown` (handling 'Enter' and ' ') for interactive non-button elements. Always provide `aria-label`s for icon-only buttons.
+## 2024-05-18 - Asynchronous Form Submissions and UI Feedback
+**Learning:** Immediate UI dismissal during async operations (like submitting a form) can lead to data loss or perceived failure if the API call encounters an error, and fails to give users proper feedback about progress. Setting disabled states and specific loading labels holds context while preventing double-submissions.
+**Action:** When implementing asynchronous form submissions or operations, hold the immediate UI dismissal/clear state until successful API resolution is guaranteed. Additionally, always provide visual loading states (e.g., text like "Commenting...", disabled states, cursor styles) to enhance clarity.
