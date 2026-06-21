@@ -19,6 +19,8 @@ const App: React.FC = () => {
     const [loading, setLoading] = React.useState(true);
     const [addingCommentPath, setAddingCommentPath] = React.useState<string | null>(null);
     const [replyingToThread, setReplyingToThread] = React.useState<number | null>(null);
+    const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+    const [submittingReplyId, setSubmittingReplyId] = React.useState<number | null>(null);
 
     const loadThreads = async (repoId: string, project: string) => {
         try {
@@ -103,25 +105,36 @@ const App: React.FC = () => {
 
     const handleCommentSubmit = async (filePath: string, comment: string) => {
         try {
+            setIsSubmittingComment(true);
             const repoId = await DevOpsService.getRepositoryId();
             const project = await DevOpsService.getProjectName();
             await DevOpsService.createThread(repoId, project, filePath, comment);
             await loadThreads(repoId, project);
+            setAddingCommentPath(null);
         } catch (err) {
             console.error("Error creating comment thread:", err);
             alert("Failed to add comment.");
+        } finally {
+            setIsSubmittingComment(false);
         }
     };
 
     const handleReplySubmit = async (threadId: number, comment: string) => {
         try {
+            setSubmittingReplyId(threadId);
             const repoId = await DevOpsService.getRepositoryId();
             const project = await DevOpsService.getProjectName();
             await DevOpsService.createComment(repoId, project, threadId, comment);
             await loadThreads(repoId, project);
+            const input = document.getElementById(`reply-box-${threadId}`) as HTMLInputElement;
+            if (input) {
+                input.value = "";
+            }
         } catch (err) {
             console.error("Error replying to thread:", err);
             alert("Failed to add reply.");
+        } finally {
+            setSubmittingReplyId(null);
         }
     };
 
@@ -262,16 +275,16 @@ const App: React.FC = () => {
                                                                                 <input 
                                                                                     id={`reply-box-${thread.id}`}
                                                                                     className={`threadId-${thread.id} bolt-textfield-input flex-grow`}
-                                                                                    style={{ backgroundColor: "transparent", color: "var(--text-primary-color, inherit)" }}
+                                                                                    style={{ backgroundColor: "transparent", color: "var(--text-primary-color, inherit)", opacity: submittingReplyId === thread.id ? 0.6 : 1 }}
                                                                                     autoComplete="off" 
                                                                                     placeholder="Write a reply..." 
+                                                                                    disabled={submittingReplyId === thread.id}
                                                                                     tabIndex={0} 
                                                                                     onKeyDown={(e) => {
                                                                                         if (e.key === 'Enter') {
                                                                                             const val = (e.target as HTMLInputElement).value;
                                                                                             if (val) {
                                                                                                 handleReplySubmit(thread.id, val);
-                                                                                                (e.target as HTMLInputElement).value = "";
                                                                                             }
                                                                                         }
                                                                                     }}
@@ -283,16 +296,16 @@ const App: React.FC = () => {
                                                                             role="button" 
                                                                             tabIndex={0} 
                                                                             type="button"
-                                                                            style={{ background: "rgba(0,0,0,0.06)", border: "none" }}
+                                                                            disabled={submittingReplyId === thread.id}
+                                                                            style={{ background: "rgba(0,0,0,0.06)", border: "none", opacity: submittingReplyId === thread.id ? 0.6 : 1, cursor: submittingReplyId === thread.id ? "not-allowed" : "pointer" }}
                                                                             onClick={() => {
                                                                                 const input = document.getElementById(`reply-box-${thread.id}`) as HTMLInputElement;
                                                                                 if (input && input.value) {
                                                                                     handleReplySubmit(thread.id, input.value);
-                                                                                    input.value = "";
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            Resolve
+                                                                            {submittingReplyId === thread.id ? "Replying..." : "Reply"}
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -320,8 +333,9 @@ const App: React.FC = () => {
                                                                                 <textarea 
                                                                                     id="pr-comment-box"
                                                                                     className="bolt-textfield-input flex-grow"
-                                                                                    style={{ minHeight: "80px", resize: "vertical", backgroundColor: "transparent", color: "var(--text-primary-color, inherit)" }}
+                                                                                    style={{ minHeight: "80px", resize: "vertical", backgroundColor: "transparent", color: "var(--text-primary-color, inherit)", opacity: isSubmittingComment ? 0.6 : 1 }}
                                                                                     placeholder="Add a new comment..."
+                                                                                    disabled={isSubmittingComment}
                                                                                     autoFocus
                                                                                 />
                                                                             </div>
@@ -332,21 +346,24 @@ const App: React.FC = () => {
                                                                     <div style={{ display: "flex", gap: "8px" }}>
                                                                         <button 
                                                                             className="bolt-button enabled subtle bolt-focus-treatment"
+                                                                            disabled={isSubmittingComment}
+                                                                            style={{ opacity: isSubmittingComment ? 0.6 : 1, cursor: isSubmittingComment ? "not-allowed" : "pointer" }}
                                                                             onClick={() => setAddingCommentPath(null)} 
                                                                         >
                                                                             Cancel
                                                                         </button>
                                                                         <button 
                                                                             className="bolt-button enabled primary bolt-focus-treatment"
+                                                                            disabled={isSubmittingComment}
+                                                                            style={{ opacity: isSubmittingComment ? 0.6 : 1, cursor: isSubmittingComment ? "not-allowed" : "pointer" }}
                                                                             onClick={() => {
                                                                                 const val = (document.getElementById("pr-comment-box") as HTMLTextAreaElement).value;
                                                                                 if (val) {
                                                                                     handleCommentSubmit(selectedFile, val);
-                                                                                    setAddingCommentPath(null);
                                                                                 }
                                                                             }} 
                                                                         >
-                                                                            Comment
+                                                                            {isSubmittingComment ? "Commenting..." : "Comment"}
                                                                         </button>
                                                                     </div>
                                                                 </div>
