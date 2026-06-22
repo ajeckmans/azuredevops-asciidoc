@@ -1,10 +1,9 @@
 import * as React from "react";
 import Asciidoctor from "@asciidoctor/core";
 import * as Diff from 'diff';
-// @ts-ignore
-import * as kroki from "asciidoctor-kroki";
 import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
+import { DevOpsService } from "../services/DevOpsService";
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './AsciiDocRenderer.css';
 import DOMPurify from 'dompurify';
@@ -23,11 +22,6 @@ DOMPurify.addHook('afterSanitizeAttributes', function(node) {
 });
 
 const asciidoctor = Asciidoctor();
-try {
-    kroki.register(asciidoctor.Extensions);
-} catch (e) {
-    console.error("Failed to register kroki:", e);
-}
 
 export interface AsciiDocRendererProps {
     content: string;
@@ -87,6 +81,12 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
 
         const processAndConvert = async () => {
             const cache = new Map<string, string>();
+            let krokiSettings: { renderPlantUML: boolean, krokiServerUrl: string } | null = null;
+            try {
+                krokiSettings = await DevOpsService.getKrokiSettings();
+            } catch (e) {
+                console.warn("Failed to get kroki settings", e);
+            }
 
             const prefetch = async (text: string, currentPath: string, depth: number = 0): Promise<string> => {
                 if (depth > 20) return text; // max depth
@@ -157,10 +157,20 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
                 });
             });
 
-            try {
-                kroki.register(registry);
-            } catch (e) {
-                console.error("Failed to register kroki:", e);
+            if (krokiSettings && krokiSettings.renderPlantUML && krokiSettings.krokiServerUrl) {
+                const krokiDiagramTypes = ['plantuml', 'mermaid', 'ditaa', 'graphviz', 'c4plantuml', 'svgbob', 'nomnoml', 'erd', 'vega', 'vegalite', 'wavedrom', 'pikchr', 'umlet', 'bpmn', 'excalidraw', 'blockdiag', 'seqdiag', 'actdiag', 'nwdiag', 'packetdiag', 'rackdiag', 'structurizr', 'dbml', 'wireviz'];
+                registry.block(function () {
+                    krokiDiagramTypes.forEach(type => {
+                        this.named(type);
+                    });
+                    this.onContext(['listing', 'literal', 'open']);
+                    this.process(function(this: any, parent: any, reader: any, attrs: any) {
+                        const lines = reader.getLines().join('\n');
+                        const encoded = btoa(unescape(encodeURIComponent(lines)));
+                        const type = (this as any).name || attrs.style || 'plantuml';
+                        return (this as any).createBlock(parent, 'pass', `<div class="async-diagram" data-type="${type}" data-content="${encoded}"></div>`);
+                    });
+                });
             }
 
             const options = {
@@ -210,6 +220,41 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
 
     React.useEffect(() => {
         if (contentRef.current) {
+            const asyncDiagrams = contentRef.current.querySelectorAll('.async-diagram');
+            if (asyncDiagrams.length > 0) {
+                DevOpsService.getKrokiSettings().then(settings => {
+                    if (settings && settings.krokiServerUrl) {
+                        const baseUrl = settings.krokiServerUrl.endsWith('/') ? settings.krokiServerUrl : settings.krokiServerUrl + '/';
+                        asyncDiagrams.forEach((diagram) => {
+                            if (diagram.getAttribute('data-processed')) return;
+                            diagram.setAttribute('data-processed', 'true');
+                            diagram.innerHTML = "<div>Loading diagram...</div>";
+                            const encoded = diagram.getAttribute('data-content');
+                            const type = diagram.getAttribute('data-type');
+                            if (encoded && type) {
+                                const source = decodeURIComponent(escape(atob(encoded)));
+                                fetch(baseUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        diagram_source: source,
+                                        diagram_type: type,
+                                        output_format: 'svg'
+                                    })
+                                })
+                                .then(res => res.text())
+                                .then(svg => {
+                                    diagram.innerHTML = svg;
+                                })
+                                .catch(e => {
+                                    console.error("Failed to fetch diagram from custom server", e);
+                                    diagram.innerHTML = `<div style="color:red;">Error rendering diagram: ${e.message}</div>`;
+                                });
+                            }
+                        });
+                    }
+                });
+            }
             const blocks = contentRef.current.querySelectorAll('pre code');
             blocks.forEach((block) => {
                 hljs.highlightElement(block as HTMLElement);
