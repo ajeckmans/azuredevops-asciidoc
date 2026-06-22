@@ -24,22 +24,30 @@ jest.mock("@asciidoctor/core", () => {
         }
     });
 });
-jest.mock("asciidoctor-kroki", () => ({
-    register: jest.fn()
-}));
+
 
 const mockDiffLines = jest.fn().mockReturnValue([]);
 jest.mock("diff", () => ({
     diffLines: (...args: any[]) => mockDiffLines(...args)
 }));
 
+jest.mock("azure-devops-extension-sdk", () => ({
+    getService: jest.fn().mockResolvedValue({}),
+    init: jest.fn().mockResolvedValue(true),
+    ready: jest.fn().mockResolvedValue(true)
+}));
+
 import { AsciiDocRenderer } from "../AsciiDocRenderer";
+import { DevOpsService } from "../../services/DevOpsService";
+
+jest.mock("../../services/DevOpsService");
 
 describe("AsciiDocRenderer", () => {
     beforeEach(() => {
         mockConvert.mockClear();
         mockLoad.mockClear();
         mockIncludeProcessor.mockClear();
+        (DevOpsService.getKrokiSettings as jest.Mock).mockResolvedValue(null);
     });
 
     it("calls asciidoctor.load with safe: 'safe' mode and sourcemap: true", async () => {

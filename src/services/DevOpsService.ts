@@ -155,7 +155,11 @@ export class DevOpsService {
                 { versionType: 2, version: commitId, versionOptions: 0 } as any
             );
             return contentStream;
-        } catch (e) {
+        } catch (e: any) {
+            if (e && e.message && e.message.includes("TF401174")) {
+                // This is expected for newly added files, don't warn
+                return "";
+            }
             console.warn("Failed to get previous file content", e);
             return "";
         }
@@ -208,21 +212,39 @@ export class DevOpsService {
         return await gitClient.getRepositories(projectName);
     }
 
-    public static async getGlobalRepoState(): Promise<any> {
+    public static async getRepoState(repositoryId: string): Promise<any> {
         try {
             const dataManager = await this.getDataManager();
-            return await dataManager.getValue("global-repo-state-v1", { scopeType: "Default" });
+            return await dataManager.getValue(`asciidoc-repo-state-${repositoryId}`, { scopeType: "Default" });
         } catch (e) {
             return null;
         }
     }
 
-    public static async setGlobalRepoState(state: any): Promise<void> {
+    public static async setRepoState(repositoryId: string, state: any): Promise<void> {
         try {
             const dataManager = await this.getDataManager();
-            await dataManager.setValue("global-repo-state-v1", state, { scopeType: "Default" });
+            await dataManager.setValue(`asciidoc-repo-state-${repositoryId}`, state, { scopeType: "Default" });
         } catch (e) {
-            console.warn("Failed to set global repo state:", e);
+            console.warn(`Failed to set repo state for ${repositoryId}:`, e);
+        }
+    }
+
+    public static async getKrokiSettings(): Promise<{ renderPlantUML: boolean, krokiServerUrl: string } | null> {
+        try {
+            const dataManager = await this.getDataManager();
+            return await dataManager.getValue("asciidoc-kroki-settings-v1", { scopeType: "Default" });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    public static async setKrokiSettings(settings: { renderPlantUML: boolean, krokiServerUrl: string }): Promise<void> {
+        try {
+            const dataManager = await this.getDataManager();
+            await dataManager.setValue("asciidoc-kroki-settings-v1", settings, { scopeType: "Default" });
+        } catch (e) {
+            console.warn("Failed to set kroki settings:", e);
         }
     }
 

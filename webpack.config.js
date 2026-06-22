@@ -6,7 +6,8 @@ module.exports = {
     entry: {
         main: "./src/index.tsx",
         hub: "./src/hub.tsx",
-        action: "./src/action.tsx"
+        action: "./src/action.tsx",
+        settings: "./src/settings.tsx"
     },
     output: {
         filename: "[name].js",
@@ -17,7 +18,6 @@ module.exports = {
         extensions: [".ts", ".tsx", ".js"]
     },
     module: {
-        noParse: /asciidoctor-kroki/,
         rules: [
             {
                 test: /\.tsx?$/,
@@ -49,6 +49,11 @@ module.exports = {
             filename: "action.html",
             template: "./src/action.html",
             chunks: ["action"]
+        }),
+        new HtmlWebpackPlugin({
+            filename: "settings.html",
+            template: "./src/settings.html",
+            chunks: ["settings"]
         })
     ],
     optimization: {

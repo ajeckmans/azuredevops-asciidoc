@@ -63,8 +63,8 @@ describe('HubApp', () => {
         (DevOpsService.getRepositoryId as jest.Mock).mockResolvedValue('repo-1');
         (DevOpsService.getProjectName as jest.Mock).mockResolvedValue('proj-1');
         (DevOpsService.getRepositories as jest.Mock).mockResolvedValue([{ id: 'repo-1', name: 'Repo 1', defaultBranch: 'main' }]);
-        (DevOpsService.getGlobalRepoState as jest.Mock).mockResolvedValue(null);
-        (DevOpsService.setGlobalRepoState as jest.Mock).mockResolvedValue(true);
+        (DevOpsService.getRepoState as jest.Mock).mockResolvedValue(null);
+        (DevOpsService.setRepoState as jest.Mock).mockResolvedValue(true);
         (DevOpsService.getRepoFileContent as jest.Mock).mockResolvedValue('Hub Content');
         (DevOpsService.getRepoAsciiDocFiles as jest.Mock).mockResolvedValue([{ path: '/docs/test.adoc' }]);
         (DevOpsService.getFileContent as jest.Mock).mockResolvedValue('Hub Content');

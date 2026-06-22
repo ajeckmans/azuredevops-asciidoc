@@ -69,6 +69,17 @@
                 "icon": "images/asciidoc-icon.png",
                 "uri": "dist/action.html"
             }
+        },
+        {
+            "id": "asciidoc-settings",
+            "type": "ms.vss-web.hub",
+            "targets": [
+                "ms.vss-web.collection-admin-hub-group"
+            ],
+            "properties": {
+                "name": "AsciiDoc Settings",
+                "uri": "dist/settings.html"
+            }
         }
     ],
     "files": [
