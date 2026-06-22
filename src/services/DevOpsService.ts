@@ -19,6 +19,10 @@ export class DevOpsService {
         return cfg.project ? cfg.project.name : (host.project ? host.project.name : "");
     }
 
+    public static getGitClient(): GitRestClient {
+        return getClient(GitRestClient);
+    }
+
     private static dataManagerInstance: any = null;
     private static cachedPrId: number | null = null;
     private static cachedPr: any = null;
@@ -28,7 +32,7 @@ export class DevOpsService {
         if (this.cachedPrId === prId && this.cachedPr) {
             return this.cachedPr;
         }
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         this.cachedPr = await gitClient.getPullRequestById(prId, projectName);
         this.cachedPrId = prId;
         return this.cachedPr;
@@ -47,7 +51,7 @@ export class DevOpsService {
     }
 
     public static async getAsciiDocFiles(repositoryId: string, projectName: string): Promise<any[]> {
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         const prId = await this.getPullRequestId();
         
         try {
@@ -90,7 +94,7 @@ export class DevOpsService {
     }
 
     public static async getFileContent(repositoryId: string, projectName: string, path: string): Promise<string> {
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         let commitId = "";
         try {
             const pr = await this.getPullRequest(repositoryId, projectName);
@@ -102,7 +106,9 @@ export class DevOpsService {
                 if (dataManager && dataManager.version) {
                     commitId = dataManager.version;
                 }
-            } catch (err) {}
+            } catch (err) {
+                console.warn("Failed to get data manager for fallback commitId", err);
+            }
         }
 
         if (!commitId) {
@@ -125,7 +131,7 @@ export class DevOpsService {
     }
 
     public static async getPreviousFileContent(repositoryId: string, projectName: string, path: string): Promise<string> {
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         let commitId = "";
         try {
             const pr = await this.getPullRequest(repositoryId, projectName);
@@ -156,7 +162,7 @@ export class DevOpsService {
     }
 
     public static async createThread(repositoryId: string, projectName: string, filePath: string, content: string): Promise<void> {
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         const prId = await this.getPullRequestId();
         
         const thread: any = {
@@ -177,7 +183,7 @@ export class DevOpsService {
     }
 
     public static async getThreads(repositoryId: string, projectName: string): Promise<any[]> {
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         const prId = await this.getPullRequestId();
         const threads = await gitClient.getThreads(repositoryId, prId, projectName);
         // Filter out deleted/closed/resolved threads. Status 1 is Active, Status 2 is Fixed, 3 is WontFix, 4 is Closed, 5 is ByDesign, 6 is Pending.
@@ -186,7 +192,7 @@ export class DevOpsService {
     }
 
     public static async createComment(repositoryId: string, projectName: string, threadId: number, content: string): Promise<void> {
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         const prId = await this.getPullRequestId();
         
         const comment: any = {
@@ -198,7 +204,7 @@ export class DevOpsService {
     }
 
     public static async getRepositories(projectName: string): Promise<any[]> {
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         return await gitClient.getRepositories(projectName);
     }
 
@@ -226,7 +232,7 @@ export class DevOpsService {
             return [];
         }
 
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         const branchName = defaultBranch.replace("refs/heads/", "");
         
         let commitId = "";
@@ -288,7 +294,7 @@ export class DevOpsService {
     }
 
     public static async getRepoFileContent(repositoryId: string, projectName: string, path: string, branchName: string = "main"): Promise<string> {
-        const gitClient = getClient(GitRestClient);
+        const gitClient = this.getGitClient();
         try {
             return await gitClient.getItemText(repositoryId, path, projectName, undefined, undefined, undefined, undefined, undefined, { versionType: 0, version: branchName, versionOptions: 0 } as any);
         } catch (e) {
