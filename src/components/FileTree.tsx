@@ -127,7 +127,8 @@ function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<Fi
     return root;
 }
 
-export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile, onFileSelected, onAddComment }) => {
+// ⚡ Bolt: Memoized FileTree to prevent expensive rendering loops for large repos
+export const FileTree: React.FC<FileTreeProps> = React.memo(({ files, threads, selectedFile, onFileSelected, onAddComment }) => {
     const [itemProvider] = React.useState(new TreeItemProvider<FileItemData>());
     const [selection] = React.useState(new ListSelection({ selectOnFocus: false, multiSelect: false }));
 
@@ -257,4 +258,4 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile
             />
         </div>
     );
-};
+});
