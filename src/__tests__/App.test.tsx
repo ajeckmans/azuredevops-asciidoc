@@ -16,9 +16,10 @@ jest.mock('azure-devops-extension-sdk', () => ({
 }));
 
 jest.mock('../components/FileTree', () => ({
-    FileTree: ({ onFileSelected }: any) => (
+    FileTree: ({ onFileSelected, onAddComment }: any) => (
         <div data-testid="mock-file-tree">
             <button onClick={() => onFileSelected('/docs/new.adoc')}>Select File</button>
+            <button onClick={() => onAddComment('/docs/new.adoc')}>Add Comment</button>
         </div>
     )
 }));
@@ -115,5 +116,101 @@ describe('App', () => {
                 expect(DevOpsService.createComment).toHaveBeenCalledWith('repo-1', 'proj-1', 1, 'My reply');
             });
         }
+    });
+
+    it('handles file fetching errors gracefully', async () => {
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        (DevOpsService.getFileContent as jest.Mock).mockRejectedValue(new Error("Network error"));
+        
+        render(<App />);
+        
+        await waitFor(() => {
+            expect(screen.getByTestId('content')).toHaveTextContent('Error loading file content.');
+        });
+        
+        consoleSpy.mockRestore();
+    });
+
+    it('handles file selection error', async () => {
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        render(<App />);
+        
+        await waitFor(() => {
+            expect(screen.getByTestId('mock-file-tree')).toBeInTheDocument();
+        });
+
+        (DevOpsService.getFileContent as jest.Mock).mockRejectedValue(new Error("Network error"));
+
+        const selectButton = screen.getByText('Select File');
+        fireEvent.click(selectButton);
+
+        await waitFor(() => {
+            expect(screen.getByTestId('content')).toHaveTextContent('Error loading file content.');
+        });
+        
+        consoleSpy.mockRestore();
+    });
+
+    it('allows drafting and submitting a new comment', async () => {
+        render(<App />);
+        
+        await waitFor(() => {
+            expect(screen.getByTestId('mock-file-tree')).toBeInTheDocument();
+        });
+
+        const addCommentBtn = screen.getByText('Add Comment');
+        fireEvent.click(addCommentBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText('Drafting new comment...')).toBeInTheDocument();
+        });
+
+        const textarea = screen.getByPlaceholderText('Add a new comment...');
+        fireEvent.change(textarea, { target: { value: 'This is a new thread' } });
+
+        const submitBtn = screen.getByRole('button', { name: 'Comment' });
+        fireEvent.click(submitBtn);
+
+        await waitFor(() => {
+            expect(DevOpsService.createThread).toHaveBeenCalledWith('repo-1', 'proj-1', '/docs/new.adoc', 'This is a new thread');
+        });
+    });
+
+    it('allows canceling a new comment draft', async () => {
+        render(<App />);
+        await waitFor(() => expect(screen.getByTestId('mock-file-tree')).toBeInTheDocument());
+
+        fireEvent.click(screen.getByText('Add Comment'));
+        await waitFor(() => expect(screen.getByText('Drafting new comment...')).toBeInTheDocument());
+
+        const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
+        fireEvent.click(cancelBtn);
+
+        await waitFor(() => {
+            expect(screen.queryByText('Drafting new comment...')).not.toBeInTheDocument();
+        });
+    });
+
+    it('handles failing to create a thread or reply', async () => {
+        const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        (DevOpsService.createThread as jest.Mock).mockRejectedValue(new Error("Failed"));
+        
+        render(<App />);
+        await waitFor(() => expect(screen.getByTestId('mock-file-tree')).toBeInTheDocument());
+
+        fireEvent.click(screen.getByText('Add Comment'));
+        await waitFor(() => expect(screen.getByText('Drafting new comment...')).toBeInTheDocument());
+
+        const textarea = screen.getByPlaceholderText('Add a new comment...');
+        fireEvent.change(textarea, { target: { value: 'Fail this thread' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Comment' }));
+
+        await waitFor(() => {
+            expect(alertMock).toHaveBeenCalledWith("Failed to add comment.");
+        });
+
+        alertMock.mockRestore();
+        consoleSpy.mockRestore();
     });
 });

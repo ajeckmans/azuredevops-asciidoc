@@ -37,13 +37,19 @@ export interface AsciiDocRendererProps {
     fetchFileContent?: (path: string) => Promise<string | null>;
 }
 
-function resolvePath(currentPath: string, target: string): string {
+function resolvePath(currentPath: string, target: string): string | null {
     if (target.startsWith('/')) return target;
     const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
     const parts = (dir + '/' + target).split('/');
     const stack: string[] = [];
     for (const part of parts) {
-        if (part === '..') stack.pop();
+        if (part === '..') {
+            if (stack.length === 0) {
+                console.warn(`Path traversal blocked: ${target}`);
+                return null;
+            }
+            stack.pop();
+        }
         else if (part !== '.' && part !== '') stack.push(part);
     }
     return '/' + stack.join('/');
@@ -95,6 +101,12 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
                     const target = match[1];
                     const attrs = match[2];
                     const absPath = resolvePath(currentPath, target);
+
+                    if (absPath === null) {
+                        replacements.push({ fullMatch, absPath: `// PATH TRAVERSAL BLOCKED: ${target}`, attrs: '' });
+                        continue;
+                    }
+
                     replacements.push({ fullMatch, absPath, attrs });
 
                     if (!cache.has(absPath) && fetchFileContent) {
@@ -119,7 +131,11 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
 
                 for (const rep of replacements) {
                     // Safe string replacement replacing all exact occurrences
-                    newText = newText.split(rep.fullMatch).join(`include::${rep.absPath}[${rep.attrs}]`);
+                    if (rep.absPath.startsWith('// PATH TRAVERSAL BLOCKED')) {
+                        newText = newText.split(rep.fullMatch).join(rep.absPath);
+                    } else {
+                        newText = newText.split(rep.fullMatch).join(`include::${rep.absPath}[${rep.attrs}]`);
+                    }
                 }
 
                 return newText;
@@ -159,14 +175,25 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
                 }
             };
 
-            const doc = asciidoctor.load(rewrittenContent, options);
-            const blocks = doc.findBy((b: any) => typeof b.getLineNumber() !== 'undefined');
-            blocks.forEach((block: any) => {
-                block.setId(`adoc-source-line-${block.getLineNumber()}`);
-            });
-            const html = doc.convert() as string;
+            // Yield to main thread before heavy processing
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (isCancelled) return;
 
-            // Sanitize the HTML to prevent XSS
+            const html = await new Promise<string>((resolve) => {
+                const doc = asciidoctor.load(rewrittenContent, options);
+                const blocks = doc.findBy((b: any) => typeof b.getLineNumber() !== 'undefined');
+                blocks.forEach((block: any) => {
+                    block.setId(`adoc-source-line-${block.getLineNumber()}`);
+                });
+                resolve(doc.convert() as string);
+            });
+
+            if (isCancelled) return;
+
+            // Sanitize the HTML to prevent XSS (can also be slow for huge files)
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (isCancelled) return;
+
             const sanitizedHtml = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
 
             if (!isCancelled) {
@@ -193,16 +220,18 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
                 const href = anchor.getAttribute("href");
                 if (href && !href.startsWith("http") && !href.startsWith("#")) {
                     const finalPath = resolvePath(filePath, href);
-                    let newHref = "#" + finalPath;
-                    try {
-                        if (document.referrer) {
-                            const url = new URL(document.referrer);
-                            url.searchParams.set("path", finalPath);
-                            newHref = url.toString();
-                        }
-                    } catch (e) {}
-                    anchor.setAttribute("href", newHref);
-                    anchor.setAttribute("data-internal-path", finalPath);
+                    if (finalPath) {
+                        let newHref = "#" + finalPath;
+                        try {
+                            if (document.referrer) {
+                                const url = new URL(document.referrer);
+                                url.searchParams.set("path", finalPath);
+                                newHref = url.toString();
+                            }
+                        } catch (e) {}
+                        anchor.setAttribute("href", newHref);
+                        anchor.setAttribute("data-internal-path", finalPath);
+                    }
                 }
             });
 

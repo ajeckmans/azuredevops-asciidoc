@@ -171,4 +171,35 @@ describe("AsciiDocRenderer", () => {
             expect(c3.querySelector('.visual-diff-deleted-marker')).toBeInTheDocument();
         });
     });
+    it("handles include macros and fetches file content", async () => {
+        const fetchFileContent = jest.fn().mockResolvedValue("included content");
+        render(<AsciiDocRenderer content="include::header.adoc[]" filePath="/docs/main.adoc" fetchFileContent={fetchFileContent} />);
+        
+        await waitFor(() => {
+            expect(fetchFileContent).toHaveBeenCalledWith("/docs/header.adoc");
+        });
+    });
+
+    it("prevents path traversal above root in include macros", async () => {
+        const fetchFileContent = jest.fn().mockResolvedValue("secret content");
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        
+        render(<AsciiDocRenderer content="include::../../secret.txt[]" filePath="/docs/main.adoc" fetchFileContent={fetchFileContent} />);
+        
+        await waitFor(() => {
+            expect(warnSpy).toHaveBeenCalledWith("Path traversal blocked: ../../secret.txt");
+            expect(fetchFileContent).not.toHaveBeenCalled();
+        });
+        
+        warnSpy.mockRestore();
+    });
+
+    it("handles include fallback when fetchFileContent returns null or fails", async () => {
+        const fetchFileContent = jest.fn().mockRejectedValue(new Error("fail"));
+        render(<AsciiDocRenderer content="include::missing.adoc[]" filePath="/docs/main.adoc" fetchFileContent={fetchFileContent} />);
+        
+        await waitFor(() => {
+            expect(fetchFileContent).toHaveBeenCalledWith("/docs/missing.adoc");
+        });
+    });
 });
