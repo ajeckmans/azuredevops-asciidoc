@@ -24,9 +24,7 @@ jest.mock("@asciidoctor/core", () => {
         }
     });
 });
-jest.mock("asciidoctor-kroki", () => ({
-    register: jest.fn()
-}));
+
 
 const mockDiffLines = jest.fn().mockReturnValue([]);
 jest.mock("diff", () => ({
