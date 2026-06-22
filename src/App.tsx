@@ -22,6 +22,17 @@ const App: React.FC = () => {
     const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
     const [submittingReplyId, setSubmittingReplyId] = React.useState<number | null>(null);
 
+    const currentUserInitials = React.useMemo(() => {
+        try {
+            const user = SDK.getUser();
+            if (user && user.displayName) {
+                const parts = user.displayName.split(" ");
+                return parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : user.displayName.substring(0, 2).toUpperCase();
+            }
+        } catch (e) { }
+        return "U";
+    }, []);
+
     const loadThreads = async (repoId: string, project: string) => {
         try {
             const allThreads = await DevOpsService.getThreads(repoId, project);
@@ -265,7 +276,7 @@ const App: React.FC = () => {
                                                                     <div>
                                                                         <div className="bolt-coin flex-noshrink margin-right-4 margin-top-4 size24" aria-hidden="true">
                                                                             <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "bold" }}>
-                                                                                AJ
+                                                                                {currentUserInitials}
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -328,6 +339,13 @@ const App: React.FC = () => {
                                                         <div className="flex-grow repos-discussion-thread flex-column flex-grow scroll-hidden">
                                                             <div className="repos-discussion-thread-reply flex-column" style={{ border: "none" }}>
                                                                 <div className="flex-row flex-grow rhythm-horizontal-8 padding-8">
+                                                                    <div>
+                                                                        <div className="bolt-coin flex-noshrink margin-right-4 margin-top-4 size24" aria-hidden="true">
+                                                                            <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "bold" }}>
+                                                                                {currentUserInitials}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
                                                                     <div className="flex-row flex-grow flex-center rhythm-horizontal-8 repos-comment-editor-max-width">
                                                                         <div className="flex-column flex-grow padding-vertical-4">
                                                                             <div className="bolt-textfield flex-row flex-center focus-treatment">
