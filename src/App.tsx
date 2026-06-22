@@ -214,7 +214,7 @@ const App: React.FC = () => {
                                                                             <div className="flex-column">
                                                                                 <div className="flex-row">
                                                                                     <div>
-                                                                                        <div className="bolt-coin flex-noshrink repos-comment-header-persona size24 cursor-pointer" tabIndex={0} role="button">
+                                                                                        <div className="bolt-coin flex-noshrink repos-comment-header-persona size24" aria-hidden="true">
                                                                                             <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "bold" }}>
                                                                                                 {initials}
                                                                                             </div>
@@ -263,7 +263,7 @@ const App: React.FC = () => {
                                                             <div className="repos-discussion-thread-reply flex-column" style={{ marginLeft: "32px", marginTop: "16px" }}>
                                                                 <div className="flex-row flex-grow rhythm-horizontal-8">
                                                                     <div>
-                                                                        <div className="bolt-coin flex-noshrink margin-right-4 margin-top-4 size24 cursor-pointer" tabIndex={0} role="button">
+                                                                        <div className="bolt-coin flex-noshrink margin-right-4 margin-top-4 size24" aria-hidden="true">
                                                                             <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "bold" }}>
                                                                                 AJ
                                                                             </div>
@@ -278,6 +278,7 @@ const App: React.FC = () => {
                                                                                     style={{ backgroundColor: "transparent", color: "var(--text-primary-color, inherit)", opacity: submittingReplyId === thread.id ? 0.6 : 1 }}
                                                                                     autoComplete="off" 
                                                                                     placeholder="Write a reply..." 
+                                                                                    aria-label="Write a reply"
                                                                                     disabled={submittingReplyId === thread.id}
                                                                                     tabIndex={0} 
                                                                                     onKeyDown={(e) => {
@@ -335,6 +336,7 @@ const App: React.FC = () => {
                                                                                     className="bolt-textfield-input flex-grow"
                                                                                     style={{ minHeight: "80px", resize: "vertical", backgroundColor: "transparent", color: "var(--text-primary-color, inherit)", opacity: isSubmittingComment ? 0.6 : 1 }}
                                                                                     placeholder="Add a new comment..."
+                                                                                    aria-label="Add a new comment"
                                                                                     disabled={isSubmittingComment}
                                                                                     autoFocus
                                                                                 />
