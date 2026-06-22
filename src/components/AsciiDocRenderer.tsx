@@ -49,7 +49,8 @@ function resolvePath(currentPath: string, target: string): string {
     return '/' + stack.join('/');
 }
 
-export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, previousContent, filePath, onLinkClick, fetchFileContent }) => {
+// ⚡ Bolt: Memoized AsciiDocRenderer to prevent expensive asciidoctor.load().convert() re-runs
+export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ content, previousContent, filePath, onLinkClick, fetchFileContent }) => {
     const [isDarkTheme, setIsDarkTheme] = React.useState<boolean>(false);
     const [htmlContent, setHtmlContent] = React.useState<string>("");
 
@@ -310,4 +311,4 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
             />
         </div>
     );
-};
+});

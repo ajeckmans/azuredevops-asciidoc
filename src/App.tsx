@@ -75,7 +75,8 @@ const App: React.FC = () => {
         init();
     }, []);
 
-    const handleFileSelected = async (path: string) => {
+    // ⚡ Bolt: Memoize event handlers to maintain stable references for React.memo child components
+    const handleFileSelected = React.useCallback(async (path: string) => {
         if (selectedFile !== path) {
             setSelectedFile(path);
             setAddingCommentPath(null);
@@ -96,12 +97,12 @@ const App: React.FC = () => {
                 setPreviousFileContent("");
             }
         }
-    };
+    }, [selectedFile]);
 
-    const handleAddComment = (path: string) => {
+    const handleAddComment = React.useCallback((path: string) => {
         handleFileSelected(path);
         setAddingCommentPath(path);
-    };
+    }, [handleFileSelected]);
 
     const handleCommentSubmit = async (filePath: string, comment: string) => {
         try {

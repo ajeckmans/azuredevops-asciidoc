@@ -4,3 +4,6 @@
 ## 2024-05-18 - [O(n) Thread Resolution Optimization]
 **Learning:** In heavily commented pull requests with large directory trees, calculating comment threads inside the tree rendering loop causes O(n²) performance scaling which blocks the main thread.
 **Action:** Pre-compute maps to perform O(1) lookups during tree generation to achieve O(n) scaling.
+## 2024-05-18 - [Preventing Component Re-renders in React Apps]
+**Learning:** `React.memo` and `React.useCallback` must be used together to be effective. If `React.memo` wraps a component, but its props (especially functions) are recreated on every render of the parent component, `React.memo` will do nothing and the component will still re-render.
+**Action:** When passing functions to components wrapped in `React.memo`, ensure those functions are wrapped in `React.useCallback` in the parent component to maintain referential equality across renders.
