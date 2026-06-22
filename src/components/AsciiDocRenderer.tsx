@@ -217,6 +217,9 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
                         contentRef.current?.querySelectorAll('.visual-diff-deleted-marker').forEach(e => e.remove());
                         contentRef.current?.querySelectorAll('.visual-diff-added').forEach(e => e.classList.remove('visual-diff-added'));
                         contentRef.current?.querySelectorAll('.visual-diff-changed').forEach(e => e.classList.remove('visual-diff-changed'));
+                        contentRef.current?.querySelectorAll('.visual-diff-sr-text').forEach(e => e.remove());
+
+                        const srOnlyStyle = "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;";
 
                         let i = 0;
                         while (i < changes.length) {
@@ -232,6 +235,11 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
                                         const elem = document.getElementById(`adoc-source-line-${targetLine}`);
                                         if (elem) {
                                             elem.classList.add("visual-diff-changed");
+                                            const srSpan = document.createElement("span");
+                                            srSpan.className = "visual-diff-sr-text";
+                                            srSpan.style.cssText = srOnlyStyle;
+                                            srSpan.innerText = "Changed line: ";
+                                            elem.insertBefore(srSpan, elem.firstChild);
                                         }
                                     }
                                     newLineNum += nextCount;
@@ -247,7 +255,7 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
                                     if (elem && elem.parentNode) {
                                         const marker = document.createElement("div");
                                         marker.className = "visual-diff-deleted-marker";
-                                        marker.innerHTML = `<span aria-hidden="true" class="left-icon flex-noshrink fabric-icon ms-Icon--Cancel medium"></span>`;
+                                        marker.innerHTML = `<span aria-hidden="true" class="left-icon flex-noshrink fabric-icon ms-Icon--Cancel medium"></span><span class="visual-diff-sr-text" style="${srOnlyStyle}">Deleted line here</span>`;
                                         elem.parentNode.insertBefore(marker, elem);
                                     }
                                 }
@@ -259,6 +267,11 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
                                         const elem = document.getElementById(`adoc-source-line-${targetLine}`);
                                         if (elem) {
                                             elem.classList.add("visual-diff-changed");
+                                            const srSpan = document.createElement("span");
+                                            srSpan.className = "visual-diff-sr-text";
+                                            srSpan.style.cssText = srOnlyStyle;
+                                            srSpan.innerText = "Changed line: ";
+                                            elem.insertBefore(srSpan, elem.firstChild);
                                         }
                                     }
                                     newLineNum += count;
@@ -271,6 +284,11 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ c
                                         const elem = document.getElementById(`adoc-source-line-${targetLine}`);
                                         if (elem) {
                                             elem.classList.add("visual-diff-added");
+                                            const srSpan = document.createElement("span");
+                                            srSpan.className = "visual-diff-sr-text";
+                                            srSpan.style.cssText = srOnlyStyle;
+                                            srSpan.innerText = "Added line: ";
+                                            elem.insertBefore(srSpan, elem.firstChild);
                                         }
                                     }
                                     newLineNum += count;

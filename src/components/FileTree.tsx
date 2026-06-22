@@ -88,7 +88,7 @@ function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<Fi
                                         text: firstComment ? `${firstComment.author.displayName}: ${firstComment.content}` : "Thread",
                                         textNode: (
                                             <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-                                                <div style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "8px", flexShrink: 0, fontSize: "10px", fontWeight: "bold" }}>
+                                                <div style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "8px", flexShrink: 0, fontSize: "10px", fontWeight: "bold" }} aria-hidden="true">
                                                     {initials}
                                                 </div>
                                                 <span className="text-ellipsis" style={{ flexGrow: 1 }}>
