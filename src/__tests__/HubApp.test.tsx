@@ -55,7 +55,10 @@ jest.mock('../components/AsciiDocRenderer', () => ({
     )
 }));
 
-
+jest.mock("azure-devops-ui/Spinner", () => ({
+    Spinner: ({ label }: any) => <div data-testid="mock-spinner">{label}</div>,
+    SpinnerSize: { large: "large" }
+}));
 
 describe('HubApp', () => {
     beforeEach(() => {

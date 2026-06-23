@@ -4,6 +4,7 @@ import { AsciiDocRenderer } from "./components/AsciiDocRenderer";
 import { Icon } from "azure-devops-ui/Icon";
 import { Surface, SurfaceBackground } from "azure-devops-ui/Surface";
 import { Page } from "azure-devops-ui/Page";
+import { Spinner, SpinnerSize } from "azure-devops-ui/Spinner";
 import * as SDK from "azure-devops-extension-sdk";
 import { CommonServiceIds, IHostNavigationService } from "azure-devops-extension-api";
 
@@ -335,7 +336,9 @@ export default function HubApp() {
             <div style={{ display: "flex", flex: 1, overflow: "hidden", borderTop: "1px solid var(--palette-neutral-8, #eaeaea)" }}>
                 <div style={{ width: "300px", borderRight: "1px solid var(--palette-neutral-8, #eaeaea)", display: "flex", flexDirection: "column", background: "transparent" }}>
                     {loading ? (
-                        <div style={{ padding: "16px", color: "var(--text-secondary-color, #666)" }}>{loadingMessage}</div>
+                        <div style={{ display: "flex", justifyContent: "center", padding: "16px", color: "var(--text-secondary-color, #666)" }}>
+                            <Spinner size={SpinnerSize.large} label={loadingMessage} />
+                        </div>
                     ) : repos.length === 0 ? (
                         <div style={{ padding: "16px", color: "var(--text-secondary-color, #666)" }}>No AsciiDoc files found in any repositories.</div>
                     ) : (
