@@ -1,0 +1,39 @@
+<<<<<<< SEARCH
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install tfx-cli
+        run: npm install -g tfx-cli
+=======
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install tfx-cli
+        run: npm install -g tfx-cli
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+      - name: Restore npm packages
+        run: npm ci --legacy-peer-deps
+
+      - name: Run Tests
+        run: npm run test
+
+      - name: Build task bundle
+        run: npm run build
+=======
+      - name: Restore npm packages
+        run: pnpm install
+
+      - name: Run Tests
+        run: pnpm test
+
+      - name: Build task bundle
+        run: pnpm build
+>>>>>>> REPLACE
