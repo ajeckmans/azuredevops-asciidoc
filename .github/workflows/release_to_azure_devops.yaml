@@ -29,6 +29,12 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false
+
       - name: Install tfx-cli
         run: npm install -g tfx-cli
 
@@ -76,13 +82,13 @@ jobs:
           echo "EXT_VERSION=$EXT_VERSION" >> $GITHUB_ENV
 
       - name: Restore npm packages
-        run: npm ci --legacy-peer-deps
+        run: pnpm install
 
       - name: Run Tests
-        run: npm run test
+        run: pnpm test
 
       - name: Build task bundle
-        run: npm run build
+        run: pnpm build
 
       - name: Package Extension
         run: |
