@@ -194,6 +194,29 @@ describe("AsciiDocRenderer", () => {
         warnSpy.mockRestore();
     });
 
+    it("prevents path traversal above root in absolute include macros", async () => {
+        const fetchFileContent = jest.fn().mockResolvedValue("secret content");
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+        render(<AsciiDocRenderer content="include::/../../secret.txt[]" filePath="/docs/main.adoc" fetchFileContent={fetchFileContent} />);
+
+        await waitFor(() => {
+            expect(warnSpy).toHaveBeenCalledWith("Path traversal blocked: /../../secret.txt");
+            expect(fetchFileContent).not.toHaveBeenCalled();
+        });
+
+        warnSpy.mockRestore();
+    });
+
+    it("handles absolute paths securely", async () => {
+        const fetchFileContent = jest.fn().mockResolvedValue("content");
+        render(<AsciiDocRenderer content="include::/docs/other.adoc[]" filePath="/docs/main.adoc" fetchFileContent={fetchFileContent} />);
+
+        await waitFor(() => {
+            expect(fetchFileContent).toHaveBeenCalledWith("/docs/other.adoc");
+        });
+    });
+
     it("handles include fallback when fetchFileContent returns null or fails", async () => {
         const fetchFileContent = jest.fn().mockRejectedValue(new Error("fail"));
         render(<AsciiDocRenderer content="include::missing.adoc[]" filePath="/docs/main.adoc" fetchFileContent={fetchFileContent} />);
