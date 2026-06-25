@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Card } from "azure-devops-ui/Card";
+import { Tooltip } from "azure-devops-ui/TooltipEx";
 
 export interface DiscussionThreadProps {
     thread: any;
@@ -55,14 +56,18 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ thread, curr
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex-row flex-grow flex-noshrink justify-end flex-center">
-                                                                    <button aria-label="Copy link to comment" className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
-                                                                        <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--Link medium"></span></span>
-                                                                    </button>
+                                                                    <Tooltip text="Copy link to comment">
+                                                                        <button aria-label="Copy link to comment" className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
+                                                                            <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--Link medium"></span></span>
+                                                                        </button>
+                                                                    </Tooltip>
                                                                     {isFirst && (
                                                                         <>
-                                                                            <button aria-label="Resolve thread" className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
-                                                                                <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--PageCheckedin medium"></span></span>
-                                                                            </button>
+                                                                            <Tooltip text="Resolve thread">
+                                                                                <button aria-label="Resolve thread" className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
+                                                                                    <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--PageCheckedin medium"></span></span>
+                                                                                </button>
+                                                                            </Tooltip>
                                                                             <div className="bolt-dropdown-expandable bolt-expandable-button inline-flex-row">
                                                                                 <button aria-label="Thread status" aria-expanded="false" aria-haspopup="true" className="bolt-button enabled subtle bolt-focus-treatment" role="button" tabIndex={0} type="button">
                                                                                     <div className="bolt-dropdown-expandable-button-label justify-start flex-grow text-ellipsis">Active</div>
