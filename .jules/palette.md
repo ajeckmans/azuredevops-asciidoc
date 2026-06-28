@@ -7,3 +7,6 @@
 ## 2026-06-22 - Prevent Focus Traps on Non-Interactive Avatars
 **Learning:** Assigning `role="button"` and `tabIndex={0}` to visual avatar elements that have no interactive `onClick` actions creates misleading focus traps for keyboard users and unnecessary noise for screen readers, breaking expected accessibility semantics.
 **Action:** Only apply `role="button"` and `tabIndex={0}` (with `onKeyDown`) to elements that provide real, executable actions. Use `aria-hidden="true"` on purely decorative avatars where the user's name is announced in adjacent text. Ensure interactive input fields like textareas also have explicit `aria-label` attributes rather than relying solely on placeholders.
+## 2024-06-28 - Icon-Only Button Tooltips
+**Learning:** Icon-only buttons lacking visible tooltips cause friction for users attempting to discover their purpose, even if `aria-label` attributes are present. Screen readers correctly interpret the buttons, but sighted users lack visual context. Tooltips significantly increase confidence.
+**Action:** Wrap icon-only buttons in the UI with `<Tooltip>` from `azure-devops-ui/TooltipEx` to ensure visual context is always provided on hover. When adding new `azure-devops-ui` components, remember to mock them in `src/setupTests.tsx` for Jest.
