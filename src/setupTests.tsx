@@ -40,3 +40,7 @@ jest.mock('azure-devops-ui/Page', () => ({
 jest.mock('azure-devops-ui/Card', () => ({
     Card: ({ children }: any) => <div>{children}</div>
 }));
+
+jest.mock('azure-devops-ui/TooltipEx', () => ({
+    Tooltip: ({ children }: any) => <div>{children}</div>
+}));
