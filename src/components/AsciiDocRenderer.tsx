@@ -38,15 +38,20 @@ export interface AsciiDocRendererProps {
 }
 
 function resolvePath(currentPath: string, target: string): string | null {
-    if (target.startsWith('/')) return target;
-    const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-    const parts = (dir + '/' + target).split('/');
+    // 🛡️ Sentinel: Normalize both absolute and relative paths to prevent path traversal (e.g. /../../etc/passwd)
+    let combinedPath = target;
+    if (!target.startsWith('/')) {
+        const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+        combinedPath = dir + '/' + target;
+    }
+
+    const parts = combinedPath.split('/');
     const stack: string[] = [];
     for (const part of parts) {
         if (part === '..') {
             if (stack.length === 0) {
                 console.warn(`Path traversal blocked: ${target}`);
-                return null;
+                return null; // Stop and block if trying to traverse above root
             }
             stack.pop();
         }
