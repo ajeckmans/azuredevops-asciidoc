@@ -4,11 +4,13 @@ import { Card } from "azure-devops-ui/Card";
 export interface DiscussionThreadProps {
     thread: any;
     currentUserInitials: string;
-    submittingReplyId: number | null;
+    isSubmittingReply: boolean;
     onReplySubmit: (threadId: number, comment: string) => void;
 }
 
-export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ thread, currentUserInitials, submittingReplyId, onReplySubmit }) => {
+// ⚡ Bolt: Memoize component and use targeted boolean prop `isSubmittingReply`
+// to prevent O(N) re-rendering bottleneck across the entire list when only one thread is submitting.
+export const DiscussionThread: React.FC<DiscussionThreadProps> = React.memo(({ thread, currentUserInitials, isSubmittingReply, onReplySubmit }) => {
     return (
         <Card className="margin-bottom-16 flex-column depth-4">
             <div style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column" }}>
@@ -99,11 +101,11 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ thread, curr
                                                     <input 
                                                         id={`reply-box-${thread.id}`}
                                                         className={`threadId-${thread.id} bolt-textfield-input flex-grow`}
-                                                        style={{ backgroundColor: "transparent", color: "var(--text-primary-color, inherit)", opacity: submittingReplyId === thread.id ? 0.6 : 1 }}
+                                                        style={{ backgroundColor: "transparent", color: "var(--text-primary-color, inherit)", opacity: isSubmittingReply ? 0.6 : 1 }}
                                                         autoComplete="off" 
                                                         placeholder="Write a reply..." 
                                                         aria-label="Write a reply"
-                                                        disabled={submittingReplyId === thread.id}
+                                                        disabled={isSubmittingReply}
                                                         tabIndex={0} 
                                                         onKeyDown={(e) => {
                                                             if (e.key === 'Enter') {
@@ -121,8 +123,8 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ thread, curr
                                                 role="button" 
                                                 tabIndex={0} 
                                                 type="button"
-                                                disabled={submittingReplyId === thread.id}
-                                                style={{ background: "rgba(0,0,0,0.06)", border: "none", opacity: submittingReplyId === thread.id ? 0.6 : 1, cursor: submittingReplyId === thread.id ? "not-allowed" : "pointer" }}
+                                                disabled={isSubmittingReply}
+                                                style={{ background: "rgba(0,0,0,0.06)", border: "none", opacity: isSubmittingReply ? 0.6 : 1, cursor: isSubmittingReply ? "not-allowed" : "pointer" }}
                                                 onClick={() => {
                                                     const input = document.getElementById(`reply-box-${thread.id}`) as HTMLInputElement;
                                                     if (input && input.value) {
@@ -130,7 +132,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ thread, curr
                                                     }
                                                 }}
                                             >
-                                                {submittingReplyId === thread.id ? "Replying..." : "Reply"}
+                                                {isSubmittingReply ? "Replying..." : "Reply"}
                                             </button>
                                         </div>
                                     </div>
@@ -142,4 +144,4 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ thread, curr
             </div>
         </Card>
     );
-};
+});
