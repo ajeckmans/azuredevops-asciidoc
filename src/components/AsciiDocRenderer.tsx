@@ -38,9 +38,11 @@ export interface AsciiDocRendererProps {
 }
 
 function resolvePath(currentPath: string, target: string): string | null {
-    if (target.startsWith('/')) return target;
-    const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-    const parts = (dir + '/' + target).split('/');
+    const isAbsolute = target.startsWith('/');
+    // Security Fix: Do not return early for absolute paths.
+    // They must also be normalized and checked for directory traversal attempts (e.g. /../../)
+    const basePath = isAbsolute ? '' : currentPath.substring(0, currentPath.lastIndexOf('/'));
+    const parts = (basePath + '/' + target).split('/');
     const stack: string[] = [];
     for (const part of parts) {
         if (part === '..') {
