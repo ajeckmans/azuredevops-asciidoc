@@ -38,9 +38,10 @@ export interface AsciiDocRendererProps {
 }
 
 function resolvePath(currentPath: string, target: string): string | null {
-    if (target.startsWith('/')) return target;
-    const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-    const parts = (dir + '/' + target).split('/');
+    // 🛡️ Sentinel: Fix CRITICAL path traversal vulnerability
+    // We must validate absolute paths starting with '/' to prevent bypassing the traversal check.
+    const fullPath = target.startsWith('/') ? target : currentPath.substring(0, currentPath.lastIndexOf('/')) + '/' + target;
+    const parts = fullPath.split('/');
     const stack: string[] = [];
     for (const part of parts) {
         if (part === '..') {
