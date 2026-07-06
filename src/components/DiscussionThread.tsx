@@ -8,7 +8,8 @@ export interface DiscussionThreadProps {
     onReplySubmit: (threadId: number, comment: string) => void;
 }
 
-export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ thread, currentUserInitials, submittingReplyId, onReplySubmit }) => {
+// ⚡ Bolt: Memoized DiscussionThread to prevent expensive re-rendering of all threads when state changes
+export const DiscussionThread: React.FC<DiscussionThreadProps> = React.memo(({ thread, currentUserInitials, submittingReplyId, onReplySubmit }) => {
     return (
         <Card className="margin-bottom-16 flex-column depth-4">
             <div style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column" }}>
@@ -142,4 +143,4 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ thread, curr
             </div>
         </Card>
     );
-};
+});
