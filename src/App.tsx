@@ -205,7 +205,7 @@ const App: React.FC = () => {
                                             key={thread.id}
                                             thread={thread}
                                             currentUserInitials={currentUserInitials}
-                                            submittingReplyId={submittingReplyId}
+                                            isSubmitting={submittingReplyId === thread.id}
                                             onReplySubmit={handleReplySubmit}
                                         />
                                     ))}
