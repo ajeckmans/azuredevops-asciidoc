@@ -7,3 +7,7 @@
 **Vulnerability:** External links created in AsciiDoc could not open in new tabs because DOMPurify removes `target` attributes by default to prevent "Reverse Tabnabbing" (where the opened tab gets access to `window.opener` and can navigate the original tab).
 **Learning:** We can securely allow `target="_blank"` by using `ADD_ATTR: ['target']` and a `DOMPurify.addHook('afterSanitizeAttributes')` to ensure external links automatically get `target="_blank"` alongside `rel="noopener noreferrer"`.
 **Prevention:** Always pair `target="_blank"` with `rel="noopener noreferrer"` and enforce it strictly via hooks rather than leaving it to the user. Remove `target` attribute for any non-external link to prevent abuse.
+## 2026-07-16 - Fix absolute path traversal bypass in AsciiDocRenderer
+**Vulnerability:** Absolute paths starting with `/` bypassed path normalization and directory traversal checks in `resolvePath`, allowing potential out-of-bounds access.
+**Learning:** Path traversal defenses must apply uniformly to both relative and absolute paths. Returning early for absolute paths without normalization is a dangerous anti-pattern.
+**Prevention:** Ensure all path resolution logic—regardless of path type—goes through strict normalization (e.g., using a stack to resolve `..` segments and enforcing root boundaries).
