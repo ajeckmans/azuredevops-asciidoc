@@ -6,6 +6,7 @@ import { renderExpandableTreeCell } from "azure-devops-ui/TreeEx";
 import { ISimpleListCell, ListSelection } from "azure-devops-ui/List";
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
 import { ISimpleTableCell } from "azure-devops-ui/Table";
+import { Tooltip } from "azure-devops-ui/TooltipEx";
 
 export interface FileTreeProps {
     files: any[];
@@ -190,7 +191,8 @@ export const FileTree: React.FC<FileTreeProps> = React.memo(({ files, threads, s
                                     </span>
                                 )}
                                 {!data.isFolder && !data.isComment && (
-                                    <div 
+                                    <Tooltip text="Add comment">
+                                        <div
                                         className={`bolt-pill flex-row flex-center outlined compact tree-plus-btn ${isSelected ? 'is-selected' : ''}`}
                                         style={{ cursor: "pointer", width: "24px", height: "24px" }}
                                         role="button"
@@ -210,6 +212,7 @@ export const FileTree: React.FC<FileTreeProps> = React.memo(({ files, threads, s
                                     >
                                         <div className="bolt-pill-content text-ellipsis">+</div>
                                     </div>
+                                    </Tooltip>
                                 )}
                             </div>
                         </div>
