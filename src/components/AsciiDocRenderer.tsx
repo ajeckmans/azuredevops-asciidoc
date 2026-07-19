@@ -38,9 +38,11 @@ export interface AsciiDocRendererProps {
 }
 
 function resolvePath(currentPath: string, target: string): string | null {
-    if (target.startsWith('/')) return target;
-    const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-    const parts = (dir + '/' + target).split('/');
+    // 🛡️ Sentinel: Fix path traversal. Do not blindly trust absolute paths.
+    // Instead of early returning `target` if it starts with `/`, normalize all paths
+    // to prevent directory traversal via paths like `/../../secret.txt`.
+    const fullPath = target.startsWith('/') ? target : currentPath.substring(0, currentPath.lastIndexOf('/')) + '/' + target;
+    const parts = fullPath.split('/');
     const stack: string[] = [];
     for (const part of parts) {
         if (part === '..') {
