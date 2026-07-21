@@ -1,0 +1,7 @@
+💡 What: Wrapped `DiscussionThread` in `React.memo` and changed the global `submittingReplyId` prop to a targeted `isSubmitting` boolean prop. Also wrapped `handleReplySubmit`, `handleCommentSubmit` and `loadThreads` in `React.useCallback`.
+
+🎯 Why: Passing a global ID to all items in a mapped list causes an O(N) re-render of every item whenever the ID changes (e.g. when a user starts or finishes submitting a reply). By deriving a targeted boolean, `React.memo` can safely skip re-renders for all unrelated list items.
+
+📊 Impact: Reduces `DiscussionThread` re-renders from O(N) to O(1) during comment submission, avoiding heavy DOM reconciliation for large files with many active threads.
+
+🔬 Measurement: Watch React DevTools Profiler while submitting a reply. Previously, all threads re-rendered; now, only the thread being replied to will re-render.

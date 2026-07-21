@@ -34,14 +34,14 @@ const App: React.FC = () => {
         return "U";
     }, []);
 
-    const loadThreads = async (repoId: string, project: string) => {
+    const loadThreads = React.useCallback(async (repoId: string, project: string) => {
         try {
             const allThreads = await DevOpsService.getThreads(repoId, project);
             setThreads(allThreads);
         } catch (err) {
             console.error("Error loading threads:", err);
         }
-    };
+    }, []);
 
     React.useEffect(() => {
         const init = async () => {
@@ -205,7 +205,7 @@ const App: React.FC = () => {
                                             key={thread.id}
                                             thread={thread}
                                             currentUserInitials={currentUserInitials}
-                                            submittingReplyId={submittingReplyId}
+                                            isSubmitting={submittingReplyId === thread.id}
                                             onReplySubmit={handleReplySubmit}
                                         />
                                     ))}
