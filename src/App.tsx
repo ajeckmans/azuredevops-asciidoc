@@ -134,13 +134,18 @@ const App: React.FC = () => {
         }
     };
 
-    const handleReplySubmit = async (threadId: number, comment: string) => {
+    const handleReplySubmit = React.useCallback(async (threadId: number, comment: string) => {
         try {
             setSubmittingReplyId(threadId);
             const repoId = await DevOpsService.getRepositoryId();
             const project = await DevOpsService.getProjectName();
             await DevOpsService.createComment(repoId, project, threadId, comment);
-            await loadThreads(repoId, project);
+
+            // loadThreads needs to be rewritten slightly to avoid stale closures if it was a dependency,
+            // but since it's just calling static methods we can inline the refresh or just use the local loadThreads
+            const allThreads = await DevOpsService.getThreads(repoId, project);
+            setThreads(allThreads);
+
             const input = document.getElementById(`reply-box-${threadId}`) as HTMLInputElement;
             if (input) {
                 input.value = "";
@@ -151,7 +156,7 @@ const App: React.FC = () => {
         } finally {
             setSubmittingReplyId(null);
         }
-    };
+    }, []);
 
     // ⚡ Bolt: Memoize fetchFileContent to prevent expensive AsciiDocRenderer re-renders
     // on unrelated state changes (like adding comments). Expected impact: Eliminates
@@ -205,7 +210,7 @@ const App: React.FC = () => {
                                             key={thread.id}
                                             thread={thread}
                                             currentUserInitials={currentUserInitials}
-                                            submittingReplyId={submittingReplyId}
+                                            isSubmitting={submittingReplyId === thread.id}
                                             onReplySubmit={handleReplySubmit}
                                         />
                                     ))}
