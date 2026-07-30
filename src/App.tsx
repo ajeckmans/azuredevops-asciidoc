@@ -34,14 +34,14 @@ const App: React.FC = () => {
         return "U";
     }, []);
 
-    const loadThreads = async (repoId: string, project: string) => {
+    const loadThreads = React.useCallback(async (repoId: string, project: string) => {
         try {
             const allThreads = await DevOpsService.getThreads(repoId, project);
             setThreads(allThreads);
         } catch (err) {
             console.error("Error loading threads:", err);
         }
-    };
+    }, []);
 
     React.useEffect(() => {
         const init = async () => {
@@ -134,7 +134,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleReplySubmit = async (threadId: number, comment: string) => {
+    const handleReplySubmit = React.useCallback(async (threadId: number, comment: string) => {
         try {
             setSubmittingReplyId(threadId);
             const repoId = await DevOpsService.getRepositoryId();
@@ -151,7 +151,7 @@ const App: React.FC = () => {
         } finally {
             setSubmittingReplyId(null);
         }
-    };
+    }, [loadThreads]);
 
     // ⚡ Bolt: Memoize fetchFileContent to prevent expensive AsciiDocRenderer re-renders
     // on unrelated state changes (like adding comments). Expected impact: Eliminates
@@ -205,7 +205,7 @@ const App: React.FC = () => {
                                             key={thread.id}
                                             thread={thread}
                                             currentUserInitials={currentUserInitials}
-                                            submittingReplyId={submittingReplyId}
+                                            isSubmitting={submittingReplyId === thread.id}
                                             onReplySubmit={handleReplySubmit}
                                         />
                                     ))}
