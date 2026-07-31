@@ -27,6 +27,10 @@ jest.mock("azure-devops-ui/Core/Observable", () => ({
     ObservableValue: class {}
 }));
 
+jest.mock('azure-devops-ui/TooltipEx', () => ({
+    Tooltip: ({ children }: any) => <>{children}</>
+}));
+
 jest.mock('azure-devops-ui/Surface', () => ({
     Surface: ({ children }: any) => <div>{children}</div>,
     SurfaceBackground: { neutral: 'neutral' }
