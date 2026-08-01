@@ -7,3 +7,6 @@
 ## 2024-05-18 - [Understanding React.memo vs useEffect for Performance]
 **Learning:** `React.memo` only prevents cheap React reconciliation (re-rendering). It does not prevent expensive operations (like AsciiDoc parsing or tree building) if those operations are already safely isolated inside `React.useEffect` hooks with proper dependency arrays. Unmemoized callbacks passed to components will cause a React re-render, but will NOT trigger `useEffect` hooks inside those components unless the callbacks are explicitly listed in the hook's dependency array.
 **Action:** Before applying `React.memo` or `React.useCallback` for performance, verify if the expensive operation is already safely isolated inside a `useEffect`. Do not falsely assume that unmemoized callbacks cause expensive `useEffect` operations to re-run.
+## 2024-08-01 - Prevent O(N) re-rendering bottlenecks in React maps
+**Learning:** When rendering lists of memoized components in React, passing a global state ID (like `submittingReplyId`) causes every component in the list to re-render when that ID changes, completely negating the benefit of `React.memo`.
+**Action:** Derive and pass targeted boolean props (e.g., `isSubmitting={submittingReplyId === item.id}`) instead of passing global state IDs, and ensure callback props are properly memoized to preserve component identity.
