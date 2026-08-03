@@ -38,10 +38,15 @@ export interface AsciiDocRendererProps {
 }
 
 function resolvePath(currentPath: string, target: string): string | null {
-    if (target.startsWith('/')) return target;
-    const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-    const parts = (dir + '/' + target).split('/');
+    // If it's an absolute path, we treat it as starting from the repo root
+    const baseDir = target.startsWith('/') ? '' : currentPath.substring(0, currentPath.lastIndexOf('/'));
+
+    // Combine base and target, ensuring a single leading slash
+    const combinedPath = (baseDir + '/' + target).replace(/\/+/g, '/');
+
+    const parts = combinedPath.split('/');
     const stack: string[] = [];
+
     for (const part of parts) {
         if (part === '..') {
             if (stack.length === 0) {
