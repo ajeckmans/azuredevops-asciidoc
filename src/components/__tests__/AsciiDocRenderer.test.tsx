@@ -202,4 +202,18 @@ describe("AsciiDocRenderer", () => {
             expect(fetchFileContent).toHaveBeenCalledWith("/docs/missing.adoc");
         });
     });
+
+    it("prevents absolute path traversal in include macros", async () => {
+        const fetchFileContent = jest.fn().mockResolvedValue("secret content");
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+        render(<AsciiDocRenderer content="include::/../../secret.txt[]" filePath="/docs/main.adoc" fetchFileContent={fetchFileContent} />);
+
+        await waitFor(() => {
+            expect(warnSpy).toHaveBeenCalledWith("Path traversal blocked: /../../secret.txt");
+            expect(fetchFileContent).not.toHaveBeenCalled();
+        });
+
+        warnSpy.mockRestore();
+    });
 });
