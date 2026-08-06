@@ -134,7 +134,9 @@ const App: React.FC = () => {
         }
     };
 
-    const handleReplySubmit = async (threadId: number, comment: string) => {
+    // ⚡ Bolt: Memoize handleReplySubmit to maintain a stable reference
+    // so that React.memo on DiscussionThread can effectively prevent re-renders
+    const handleReplySubmit = React.useCallback(async (threadId: number, comment: string) => {
         try {
             setSubmittingReplyId(threadId);
             const repoId = await DevOpsService.getRepositoryId();
@@ -151,7 +153,7 @@ const App: React.FC = () => {
         } finally {
             setSubmittingReplyId(null);
         }
-    };
+    }, []);
 
     // ⚡ Bolt: Memoize fetchFileContent to prevent expensive AsciiDocRenderer re-renders
     // on unrelated state changes (like adding comments). Expected impact: Eliminates
@@ -205,7 +207,7 @@ const App: React.FC = () => {
                                             key={thread.id}
                                             thread={thread}
                                             currentUserInitials={currentUserInitials}
-                                            submittingReplyId={submittingReplyId}
+                                            isSubmitting={submittingReplyId === thread.id}
                                             onReplySubmit={handleReplySubmit}
                                         />
                                     ))}

@@ -4,13 +4,13 @@ import { Card } from "azure-devops-ui/Card";
 export interface DiscussionThreadProps {
     thread: any;
     currentUserInitials: string;
-    isSubmitting: boolean;
+    submittingReplyId: number | null;
     onReplySubmit: (threadId: number, comment: string) => void;
 }
 
 // ⚡ Bolt: Memoized DiscussionThread to prevent expensive O(N) re-renders
 // when parent state (like currently focused file or active comment box) changes
-export const DiscussionThread: React.FC<DiscussionThreadProps> = React.memo(({ thread, currentUserInitials, isSubmitting, onReplySubmit }) => {
+export const DiscussionThread: React.FC<DiscussionThreadProps> = React.memo(({ thread, currentUserInitials, submittingReplyId, onReplySubmit }) => {
     return (
         <Card className="margin-bottom-16 flex-column depth-4">
             <div style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column" }}>
@@ -21,13 +21,13 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = React.memo(({ t
                                 {thread.comments.map((comment: any, index: number) => {
                                     const isFirst = index === 0;
                                     const hasReplies = thread.comments.length > 1 && isFirst;
-                                    
+
                                     let initials = "U";
                                     if (comment.author?.displayName) {
                                         const parts = comment.author.displayName.split(" ");
                                         initials = parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : comment.author.displayName.substring(0, 2).toUpperCase();
                                     }
-                                    
+
                                     let timeAgo = "Just now";
                                     if (comment.publishedDate) {
                                         const diffInHours = Math.floor((new Date().getTime() - new Date(comment.publishedDate).getTime()) / (1000 * 60 * 60));
@@ -85,7 +85,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = React.memo(({ t
                                         </div>
                                     );
                                 })}
-                                
+
                                 <div className="repos-discussion-thread-reply flex-column" style={{ marginLeft: "32px", marginTop: "16px" }}>
                                     <div className="flex-row flex-grow rhythm-horizontal-8">
                                         <div>
@@ -98,15 +98,15 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = React.memo(({ t
                                         <div className="flex-row flex-grow flex-center rhythm-horizontal-8 repos-comment-editor-max-width">
                                             <div className="flex-column flex-grow padding-vertical-4">
                                                 <div className="bolt-textfield flex-row flex-center focus-treatment">
-                                                    <input 
+                                                    <input
                                                         id={`reply-box-${thread.id}`}
                                                         className={`threadId-${thread.id} bolt-textfield-input flex-grow`}
                                                         style={{ backgroundColor: "transparent", color: "var(--text-primary-color, inherit)", opacity: isSubmitting ? 0.6 : 1 }}
-                                                        autoComplete="off" 
-                                                        placeholder="Write a reply..." 
+                                                        autoComplete="off"
+                                                        placeholder="Write a reply..."
                                                         aria-label="Write a reply"
                                                         disabled={isSubmitting}
-                                                        tabIndex={0} 
+                                                        tabIndex={0}
                                                         onKeyDown={(e) => {
                                                             if (e.key === 'Enter') {
                                                                 const val = (e.target as HTMLInputElement).value;
@@ -118,10 +118,10 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = React.memo(({ t
                                                     />
                                                 </div>
                                             </div>
-                                            <button 
-                                                className="bolt-button enabled bolt-focus-treatment" 
-                                                role="button" 
-                                                tabIndex={0} 
+                                            <button
+                                                className="bolt-button enabled bolt-focus-treatment"
+                                                role="button"
+                                                tabIndex={0}
                                                 type="button"
                                                 disabled={isSubmitting}
                                                 style={{ background: "rgba(0,0,0,0.06)", border: "none", opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? "not-allowed" : "pointer" }}
