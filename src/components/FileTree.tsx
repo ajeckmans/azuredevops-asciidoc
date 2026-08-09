@@ -5,6 +5,7 @@ import { ITreeColumn } from "azure-devops-ui/Components/TreeEx/Tree.Props";
 import { renderExpandableTreeCell } from "azure-devops-ui/TreeEx";
 import { ISimpleListCell, ListSelection } from "azure-devops-ui/List";
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
+import { Tooltip } from "azure-devops-ui/TooltipEx";
 import { ISimpleTableCell } from "azure-devops-ui/Table";
 
 export interface FileTreeProps {
@@ -190,26 +191,28 @@ export const FileTree: React.FC<FileTreeProps> = React.memo(({ files, threads, s
                                     </span>
                                 )}
                                 {!data.isFolder && !data.isComment && (
-                                    <div 
-                                        className={`bolt-pill flex-row flex-center outlined compact tree-plus-btn ${isSelected ? 'is-selected' : ''}`}
-                                        style={{ cursor: "pointer", width: "24px", height: "24px" }}
-                                        role="button"
-                                        tabIndex={0}
-                                        aria-label="Add comment"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onAddComment(data.path);
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                e.preventDefault();
+                                    <Tooltip text="Add comment">
+                                        <div
+                                            className={`bolt-pill flex-row flex-center outlined compact tree-plus-btn ${isSelected ? 'is-selected' : ''}`}
+                                            style={{ cursor: "pointer", width: "24px", height: "24px" }}
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label="Add comment"
+                                            onClick={(e) => {
                                                 e.stopPropagation();
                                                 onAddComment(data.path);
-                                            }
-                                        }}
-                                    >
-                                        <div className="bolt-pill-content text-ellipsis">+</div>
-                                    </div>
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    onAddComment(data.path);
+                                                }
+                                            }}
+                                        >
+                                            <div className="bolt-pill-content text-ellipsis">+</div>
+                                        </div>
+                                    </Tooltip>
                                 )}
                             </div>
                         </div>
