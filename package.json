@@ -23,7 +23,6 @@
   "dependencies": {
     "@asciidoctor/core": "^3.0.4",
     "@fortawesome/fontawesome-free": "^7.2.0",
-    "asciidoctor-kroki": "^0.18.1",
     "azure-devops-extension-api": "^5.273.0",
     "azure-devops-extension-sdk": "^5.0.0",
     "azure-devops-ui": "^2.273.4",

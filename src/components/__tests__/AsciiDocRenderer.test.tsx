@@ -11,8 +11,12 @@ const mockLoad = jest.fn().mockReturnValue({
     convert: mockConvert
 });
 const mockIncludeProcessor = jest.fn();
+const mockBlock = jest.fn();
+const mockBlockMacro = jest.fn();
 const mockRegistry = {
-    includeProcessor: mockIncludeProcessor
+    includeProcessor: mockIncludeProcessor,
+    block: mockBlock,
+    blockMacro: mockBlockMacro
 };
 
 jest.mock("@asciidoctor/core", () => {
@@ -24,8 +28,9 @@ jest.mock("@asciidoctor/core", () => {
         }
     });
 });
-jest.mock("asciidoctor-kroki", () => ({
-    register: jest.fn()
+jest.mock("../../services/PlantUmlService", () => ({
+    renderPlantUml: jest.fn().mockResolvedValue("<svg><text>Mocked PlantUML</text></svg>"),
+    containsPlantUml: jest.fn().mockReturnValue(true)
 }));
 
 const mockDiffLines = jest.fn().mockReturnValue([]);
@@ -54,6 +59,17 @@ describe("AsciiDocRenderer", () => {
             safe: 'safe',
             sourcemap: true
         }));
+    });
+
+    it("registers plantuml and c4plantuml block and macro processors", async () => {
+        render(<AsciiDocRenderer content="== Diagram Test" filePath="/some/path.adoc" />);
+
+        await waitFor(() => {
+            expect(mockBlock).toHaveBeenCalledWith('plantuml', expect.any(Function));
+            expect(mockBlock).toHaveBeenCalledWith('c4plantuml', expect.any(Function));
+            expect(mockBlockMacro).toHaveBeenCalledWith('plantuml', expect.any(Function));
+            expect(mockBlockMacro).toHaveBeenCalledWith('c4plantuml', expect.any(Function));
+        });
     });
 
     it("renders the converted html content", async () => {

@@ -1,20 +1,14 @@
 import * as React from "react";
 import Asciidoctor from "@asciidoctor/core";
 import * as Diff from 'diff';
-// @ts-ignore
-import * as kroki from "asciidoctor-kroki";
 import hljs from 'highlight.js';
 import 'highlight.js/styles/default.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './AsciiDocRenderer.css';
 import DOMPurify from 'dompurify';
+import { renderPlantUml } from "../services/PlantUmlService";
 
 const asciidoctor = Asciidoctor();
-try {
-    kroki.register(asciidoctor.Extensions);
-} catch (e) {
-    console.error("Failed to register kroki:", e);
-}
 
 export interface AsciiDocRendererProps {
     content: string;
@@ -71,7 +65,7 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
             const prefetch = async (text: string, currentPath: string, depth: number = 0): Promise<string> => {
                 if (depth > 20) return text; // max depth
                 let newText = text;
-                const regex = /^include::([^\[]+)\[(.*?)\]/gm;
+                const regex = /^(?:include|(?:plantuml|c4plantuml))::([^\[]+)\[(.*?)\]/gm;
                 let match;
                 const promises: Promise<void>[] = [];
                 const replacements: { fullMatch: string, absPath: string, attrs: string }[] = [];
@@ -104,8 +98,10 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                 await Promise.all(promises);
 
                 for (const rep of replacements) {
-                    // Safe string replacement replacing all exact occurrences
-                    newText = newText.split(rep.fullMatch).join(`include::${rep.absPath}[${rep.attrs}]`);
+                    // Only rewrite include:: syntax; leave plantuml:: macros for the blockMacro processor
+                    if (rep.fullMatch.startsWith("include::")) {
+                        newText = newText.split(rep.fullMatch).join(`include::${rep.absPath}[${rep.attrs}]`);
+                    }
                 }
 
                 return newText;
@@ -116,7 +112,7 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
 
             const registry = asciidoctor.Extensions.create();
             registry.includeProcessor(function () {
-                this.handles((target) => true);
+                this.handles((target: string) => true);
                 this.process((doc: any, reader: any, target: string, attrs: any) => {
                     const data = cache.get(target);
                     if (data !== undefined && data !== "") {
@@ -127,10 +123,49 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                 });
             });
 
-            try {
-                kroki.register(registry);
-            } catch (e) {
-                console.error("Failed to register kroki:", e);
+            // PlantUML diagram collection for client-side rendering
+            const plantUmlBlocks: { id: string; content: string }[] = [];
+
+            const createPlantUmlBlockProcessor = (name: string) => {
+                return function (this: any) {
+                    this.named(name);
+                    this.onContext(['listing', 'literal', 'open']);
+                    this.positionalAttributes(['target', 'format']);
+                    this.process((parent: any, reader: any, attrs: any) => {
+                        const diagramText = reader.getLines().join('\n');
+                        const blockId = `plantuml-diagram-${Math.random().toString(36).substring(2, 9)}`;
+                        plantUmlBlocks.push({ id: blockId, content: diagramText });
+                        const titleHtml = attrs.title ? `<div class="title">${attrs.title}</div>` : '';
+                        const captionHtml = attrs.caption ? `<div class="caption">${attrs.caption}</div>` : '';
+                        const placeholder = `<div class="plantuml-diagram-container" id="${blockId}">${titleHtml}${captionHtml}<div class="plantuml-diagram-loading">Rendering diagram...</div></div>`;
+                        return this.createBlock(parent, 'pass', placeholder, attrs);
+                    });
+                };
+            };
+
+            const createPlantUmlMacroProcessor = (name: string) => {
+                return function (this: any) {
+                    this.named(name);
+                    this.positionalAttributes(['format']);
+                    this.process((parent: any, target: string, attrs: any) => {
+                        const absPath = resolvePath(filePath, target);
+                        const diagramText = cache.get(absPath) || `// Diagram file not found: ${absPath}`;
+                        const blockId = `plantuml-diagram-${Math.random().toString(36).substring(2, 9)}`;
+                        plantUmlBlocks.push({ id: blockId, content: diagramText });
+                        const titleHtml = attrs.title ? `<div class="title">${attrs.title}</div>` : '';
+                        const placeholder = `<div class="plantuml-diagram-container" id="${blockId}">${titleHtml}<div class="plantuml-diagram-loading">Rendering diagram...</div></div>`;
+                        return this.createBlock(parent, 'pass', placeholder, attrs);
+                    });
+                };
+            };
+
+            if (typeof registry.block === 'function') {
+                ['plantuml', 'c4plantuml'].forEach((name) => {
+                    registry.block(name, createPlantUmlBlockProcessor(name));
+                    if (typeof registry.blockMacro === 'function') {
+                        registry.blockMacro(name, createPlantUmlMacroProcessor(name));
+                    }
+                });
             }
 
             const options = {
@@ -158,12 +193,49 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
             if (!isCancelled) {
                 setHtmlContent(sanitizedHtml);
             }
+
+            // Asynchronously render each PlantUML diagram client-side
+            if (plantUmlBlocks.length > 0) {
+                for (const block of plantUmlBlocks) {
+                    if (isCancelled) return;
+                    try {
+                        const svg = await renderPlantUml(block.content, { dark: isDarkTheme });
+                        if (isCancelled) return;
+                        
+                        // Wait briefly if DOM element hasn't mounted yet
+                        let el = document.getElementById(block.id);
+                        if (!el) {
+                            await new Promise((resolve) => setTimeout(resolve, 50));
+                            el = document.getElementById(block.id);
+                        }
+                        if (el) {
+                            const loadingEl = el.querySelector('.plantuml-diagram-loading');
+                            if (loadingEl) {
+                                loadingEl.remove();
+                            }
+                            const svgWrapper = document.createElement('div');
+                            svgWrapper.innerHTML = DOMPurify.sanitize(svg);
+                            el.appendChild(svgWrapper);
+                        }
+                    } catch (err: any) {
+                        if (isCancelled) return;
+                        let el = document.getElementById(block.id);
+                        if (el) {
+                            const loadingEl = el.querySelector('.plantuml-diagram-loading');
+                            if (loadingEl) {
+                                loadingEl.className = 'plantuml-diagram-error';
+                                loadingEl.textContent = `PlantUML rendering failed: ${err && err.message ? err.message : String(err)}`;
+                            }
+                        }
+                    }
+                }
+            }
         };
 
         processAndConvert();
 
         return () => { isCancelled = true; };
-    }, [content, filePath, fetchFileContent]);
+    }, [content, filePath, fetchFileContent, isDarkTheme]);
 
     const contentRef = React.useRef<HTMLDivElement>(null);
 
