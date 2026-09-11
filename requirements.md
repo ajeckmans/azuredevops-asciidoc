@@ -5,7 +5,7 @@ This document tracks all the requested features and requirements for the AsciiDo
 ## Core Requirements
 - [x] **New PR Tab**: Introduce a custom "AsciiDoc" tab/view in the Azure DevOps Pull Request page.
 - [x] **AsciiDoc Rendering**: Render `.adoc` and `.asciidoc` files accurately using the `@asciidoctor/core` JavaScript library.
-- [x] **PlantUML/Diagram Support**: Support advanced diagram rendering (e.g., PlantUML) by integrating with the Kroki extension (`asciidoctor-kroki`).
+- [x] **PlantUML/Diagram Support**: Support client-side PlantUML and C4 diagram rendering natively in the browser via official PlantUML TeaVM-compiled JavaScript, eliminating external server dependencies (Kroki) and avoiding Azure DevOps CSP restrictions.
 
 ## UI / Layout (Native Alignment)
 - [x] **Native Feel**: The extension's UI must closely mimic the native Azure DevOps "Files" tab.

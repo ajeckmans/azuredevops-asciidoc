@@ -17,7 +17,6 @@ module.exports = {
         extensions: [".ts", ".tsx", ".js"]
     },
     module: {
-        noParse: /asciidoctor-kroki/,
         rules: [
             {
                 test: /\.tsx?$/,
@@ -57,8 +56,8 @@ module.exports = {
         }
     },
     performance: {
-        maxAssetSize: 5242880, // 5 MiB
-        maxEntrypointSize: 5242880, // 5 MiB
+        maxAssetSize: 10485760, // 10 MiB
+        maxEntrypointSize: 10485760, // 10 MiB
         assetFilter: function(assetFilename) {
             return !assetFilename.endsWith('.woff2');
         }

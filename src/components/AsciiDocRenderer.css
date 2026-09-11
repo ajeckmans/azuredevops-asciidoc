@@ -151,10 +151,47 @@
     margin-bottom: 0.2em;
 }
 
-/* Invert diagrams in dark mode */
-.asciidoc-content.is-dark-theme img[src*="kroki"],
+/* Invert external image diagrams in dark mode if any remain */
 .asciidoc-content.is-dark-theme img[src*="plantuml"] {
     filter: invert(1) hue-rotate(180deg) brightness(1.2);
+}
+
+/* PlantUML Client-side Diagram Container */
+.asciidoc-content .plantuml-diagram-container {
+    margin: 1.5em 0;
+    text-align: center;
+    overflow-x: auto;
+}
+
+.asciidoc-content .plantuml-diagram-container svg {
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+}
+
+.asciidoc-content .plantuml-diagram-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: var(--text-secondary-color, #666);
+    font-size: 13px;
+    font-style: italic;
+    background: rgba(128, 128, 128, 0.05);
+    border: 1px dashed var(--palette-neutral-8, #ccc);
+    border-radius: 4px;
+}
+
+.asciidoc-content .plantuml-diagram-error {
+    padding: 12px 16px;
+    color: var(--palette-error, #d13438);
+    background: rgba(209, 52, 56, 0.08);
+    border-left: 4px solid var(--palette-error, #d13438);
+    border-radius: 2px;
+    font-family: monospace;
+    font-size: 12px;
+    text-align: left;
+    white-space: pre-wrap;
 }
 
 /* Visual Diff Highlights */
