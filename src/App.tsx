@@ -5,6 +5,7 @@ import { CommonServiceIds, IHostNavigationService } from "azure-devops-extension
 import { Header } from "azure-devops-ui/Header";
 import { Surface, SurfaceBackground } from "azure-devops-ui/Surface";
 import { Page } from "azure-devops-ui/Page";
+import { Spinner, SpinnerSize } from "azure-devops-ui/Spinner";
 import { Card } from "azure-devops-ui/Card";
 import { DevOpsService } from "./services/DevOpsService";
 import { FileTree } from "./components/FileTree";
@@ -176,7 +177,9 @@ const App: React.FC = () => {
             <div style={{ display: "flex", flex: 1, overflow: "hidden", borderTop: "1px solid var(--palette-neutral-8, #eaeaea)" }}>
                 <div style={{ width: "300px", flexShrink: 0, overflow: "auto", borderRight: "1px solid var(--palette-neutral-8, #eaeaea)",  }}>
                     {loading ? (
-                        <div style={{ padding: "16px" }}>Loading files...</div>
+                        <div style={{ display: "flex", justifyContent: "center", padding: "16px" }}>
+                            <Spinner size={SpinnerSize.large} label="Loading files..." />
+                        </div>
                     ) : (
                         <FileTree files={files} threads={threads} selectedFile={selectedFile} onFileSelected={handleFileSelected} onAddComment={handleAddComment} />
                     )}

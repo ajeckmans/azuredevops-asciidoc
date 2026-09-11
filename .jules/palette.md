@@ -7,3 +7,6 @@
 ## 2026-06-22 - Prevent Focus Traps on Non-Interactive Avatars
 **Learning:** Assigning `role="button"` and `tabIndex={0}` to visual avatar elements that have no interactive `onClick` actions creates misleading focus traps for keyboard users and unnecessary noise for screen readers, breaking expected accessibility semantics.
 **Action:** Only apply `role="button"` and `tabIndex={0}` (with `onKeyDown`) to elements that provide real, executable actions. Use `aria-hidden="true"` on purely decorative avatars where the user's name is announced in adjacent text. Ensure interactive input fields like textareas also have explicit `aria-label` attributes rather than relying solely on placeholders.
+## 2024-07-28 - Replace Plain Text Loading State with Spinner Component
+**Learning:** Initial application loading states were represented by plain text strings wrapped in `div` elements, such as `<div>Loading files...</div>`. While functional, this lacks visual feedback, leading to a suboptimal user experience during longer loads or slow connections.
+**Action:** Always utilize the `Spinner` component from `azure-devops-ui/Spinner` for asynchronous loading states at the application or page level to provide clear, animated visual feedback to the user. Ensure the `Spinner` is centered within its container for proper visual alignment.
