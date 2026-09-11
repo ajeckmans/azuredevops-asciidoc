@@ -116,50 +116,45 @@ export default function HubApp() {
                 const projectName = await DevOpsService.getProjectName();
                 const allRepos = await DevOpsService.getRepositories(projectName);
                 
-                let globalState = await DevOpsService.getGlobalRepoState();
+                const finalRepos: any[] = [];
                 const oneHour = 60 * 60 * 1000;
                 const now = Date.now();
 
-                let needsFullScan = false;
-                if (!globalState || !globalState.lastScanned || (now - globalState.lastScanned > oneHour)) {
-                    needsFullScan = true;
-                    globalState = { lastScanned: now, reposWithAsciidoc: [], scannedRepoIds: [] };
-                }
+                setLoadingMessage(`Checking AsciiDoc cache for ${allRepos.length} repositories...`);
 
-                const reposToScan: any[] = [];
-                const scannedIdsSet = new Set(globalState.scannedRepoIds);
-                for (const repo of allRepos) {
-                    if (needsFullScan || !scannedIdsSet.has(repo.id)) {
-                        reposToScan.push(repo);
-                    }
-                }
+                const batchSize = 10;
+                for (let i = 0; i < allRepos.length; i += batchSize) {
+                    const batch = allRepos.slice(i, i + batchSize);
+                    await Promise.all(batch.map(async (repo) => {
+                        let repoState = await DevOpsService.getRepoState(repo.id);
+                        let needsScan = false;
+                        
+                        if (!repoState || !repoState.lastScanned || (now - repoState.lastScanned > oneHour)) {
+                            needsScan = true;
+                        }
 
-                if (reposToScan.length > 0) {
-                    setLoadingMessage(`Scanning ${reposToScan.length} repositories for AsciiDoc files...`);
-                    
-                    const batchSize = 5;
-                    for (let i = 0; i < reposToScan.length; i += batchSize) {
-                        const batch = reposToScan.slice(i, i + batchSize);
-                        await Promise.all(batch.map(async (repo) => {
+                        if (needsScan) {
                             if (repo.defaultBranch) {
                                 const files = await DevOpsService.getRepoAsciiDocFiles(repo.id, projectName, repo.defaultBranch);
-                                globalState.scannedRepoIds.push(repo.id);
-                                if (files && files.length > 0) {
-                                    globalState.reposWithAsciidoc.push(repo.id);
-                                }
+                                repoState = {
+                                    lastScanned: now,
+                                    hasAsciidoc: files && files.length > 0
+                                };
                             } else {
-                                globalState.scannedRepoIds.push(repo.id);
+                                repoState = {
+                                    lastScanned: now,
+                                    hasAsciidoc: false
+                                };
                             }
-                        }));
-                    }
-                    
-                    globalState.reposWithAsciidoc = Array.from(new Set(globalState.reposWithAsciidoc));
-                    globalState.scannedRepoIds = Array.from(new Set(globalState.scannedRepoIds));
-                    await DevOpsService.setGlobalRepoState(globalState);
+                            await DevOpsService.setRepoState(repo.id, repoState);
+                        }
+
+                        if (repoState.hasAsciidoc) {
+                            finalRepos.push(repo);
+                        }
+                    }));
                 }
 
-                const reposWithAsciidocSet = new Set(globalState.reposWithAsciidoc);
-                const finalRepos = allRepos.filter(r => reposWithAsciidocSet.has(r.id));
                 finalRepos.sort((a, b) => a.name.localeCompare(b.name));
                 setRepos(finalRepos);
 
