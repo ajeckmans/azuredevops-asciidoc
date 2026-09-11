@@ -29,6 +29,19 @@ function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<Fi
     const root: ITreeItem<FileItemData>[] = [];
     const nodeMap = new Map<string, ITreeItem<FileItemData>>();
 
+    // ⚡ Bolt: Replace O(n²) nested loop with O(n) hash map lookup
+    // Groups threads by file path once to prevent O(N) filtering inside the file parts loop
+    const threadsByPath = new Map<string, any[]>();
+    threads.forEach(t => {
+        if (t.threadContext && t.threadContext.filePath) {
+            const path = t.threadContext.filePath;
+            if (!threadsByPath.has(path)) {
+                threadsByPath.set(path, []);
+            }
+            threadsByPath.get(path)!.push(t);
+        }
+    });
+
     files.forEach(file => {
         const cleanPath = file.path.startsWith("/") ? file.path.substring(1) : file.path;
         const parts = cleanPath.split("/");
@@ -63,7 +76,7 @@ function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<Fi
                 existingNode = newNode;
                 
                 if (!isFolder) {
-                    const fileThreads = threads.filter(t => t.threadContext && t.threadContext.filePath === nodePath);
+                    const fileThreads = threadsByPath.get(nodePath) || [];
                     if (fileThreads.length > 0) {
                         existingNode.childItems = fileThreads.map(thread => {
                             const firstComment = thread.comments && thread.comments[0] ? thread.comments[0] : null;
@@ -75,7 +88,7 @@ function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<Fi
                                         text: firstComment ? `${firstComment.author.displayName}: ${firstComment.content}` : "Thread",
                                         textNode: (
                                             <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-                                                <div style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "8px", flexShrink: 0, fontSize: "10px", fontWeight: "bold" }}>
+                                                <div style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", marginRight: "8px", flexShrink: 0, fontSize: "10px", fontWeight: "bold" }} aria-hidden="true">
                                                     {initials}
                                                 </div>
                                                 <span className="text-ellipsis" style={{ flexGrow: 1 }}>
@@ -114,7 +127,8 @@ function buildTreeItems(files: { path: string }[], threads: any[]): ITreeItem<Fi
     return root;
 }
 
-export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile, onFileSelected, onAddComment }) => {
+// ⚡ Bolt: Memoized FileTree to prevent expensive rendering loops for large repos
+export const FileTree: React.FC<FileTreeProps> = React.memo(({ files, threads, selectedFile, onFileSelected, onAddComment }) => {
     const [itemProvider] = React.useState(new TreeItemProvider<FileItemData>());
     const [selection] = React.useState(new ListSelection({ selectOnFocus: false, multiSelect: false }));
 
@@ -179,9 +193,19 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile
                                     <div 
                                         className={`bolt-pill flex-row flex-center outlined compact tree-plus-btn ${isSelected ? 'is-selected' : ''}`}
                                         style={{ cursor: "pointer", width: "24px", height: "24px" }}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label="Add comment"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             onAddComment(data.path);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onAddComment(data.path);
+                                            }
                                         }}
                                     >
                                         <div className="bolt-pill-content text-ellipsis">+</div>
@@ -234,4 +258,4 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, threads, selectedFile
             />
         </div>
     );
-};
+});

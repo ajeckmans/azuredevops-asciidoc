@@ -8,6 +8,19 @@ import './AsciiDocRenderer.css';
 import DOMPurify from 'dompurify';
 import { renderPlantUml } from "../services/PlantUmlService";
 
+DOMPurify.addHook('afterSanitizeAttributes', function(node) {
+    if (node.tagName && node.tagName.toLowerCase() === 'a') {
+        const href = node.getAttribute('href');
+        // Only set target="_blank" for external links
+        if (href && (href.startsWith('http') || href.startsWith('//'))) {
+            node.setAttribute('target', '_blank');
+            node.setAttribute('rel', 'noopener noreferrer');
+        } else {
+            node.removeAttribute('target');
+        }
+    }
+});
+
 const asciidoctor = Asciidoctor();
 
 export interface AsciiDocRendererProps {
@@ -18,19 +31,26 @@ export interface AsciiDocRendererProps {
     fetchFileContent?: (path: string) => Promise<string | null>;
 }
 
-function resolvePath(currentPath: string, target: string): string {
+function resolvePath(currentPath: string, target: string): string | null {
     if (target.startsWith('/')) return target;
     const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
     const parts = (dir + '/' + target).split('/');
     const stack: string[] = [];
     for (const part of parts) {
-        if (part === '..') stack.pop();
+        if (part === '..') {
+            if (stack.length === 0) {
+                console.warn(`Path traversal blocked: ${target}`);
+                return null;
+            }
+            stack.pop();
+        }
         else if (part !== '.' && part !== '') stack.push(part);
     }
     return '/' + stack.join('/');
 }
 
-export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, previousContent, filePath, onLinkClick, fetchFileContent }) => {
+// ⚡ Bolt: Memoized AsciiDocRenderer to prevent expensive asciidoctor.load().convert() re-runs
+export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = React.memo(({ content, previousContent, filePath, onLinkClick, fetchFileContent }) => {
     const [isDarkTheme, setIsDarkTheme] = React.useState<boolean>(false);
     const [htmlContent, setHtmlContent] = React.useState<string>("");
 
@@ -75,6 +95,12 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                     const target = match[1];
                     const attrs = match[2];
                     const absPath = resolvePath(currentPath, target);
+
+                    if (absPath === null) {
+                        replacements.push({ fullMatch, absPath: `// PATH TRAVERSAL BLOCKED: ${target}`, attrs: '' });
+                        continue;
+                    }
+
                     replacements.push({ fullMatch, absPath, attrs });
 
                     if (!cache.has(absPath) && fetchFileContent) {
@@ -98,8 +124,9 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                 await Promise.all(promises);
 
                 for (const rep of replacements) {
-                    // Only rewrite include:: syntax; leave plantuml:: macros for the blockMacro processor
-                    if (rep.fullMatch.startsWith("include::")) {
+                    if (rep.absPath.startsWith('// PATH TRAVERSAL BLOCKED')) {
+                        newText = newText.split(rep.fullMatch).join(rep.absPath);
+                    } else if (rep.fullMatch.startsWith("include::")) {
                         newText = newText.split(rep.fullMatch).join(`include::${rep.absPath}[${rep.attrs}]`);
                     }
                 }
@@ -149,6 +176,10 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                     this.positionalAttributes(['format']);
                     this.process((parent: any, target: string, attrs: any) => {
                         const absPath = resolvePath(filePath, target);
+                        if (!absPath) {
+                            const errorHtml = `<div class="plantuml-diagram-container"><div class="plantuml-diagram-error">Path traversal blocked: ${target}</div></div>`;
+                            return this.createBlock(parent, 'pass', errorHtml, attrs);
+                        }
                         const diagramText = cache.get(absPath) || `// Diagram file not found: ${absPath}`;
                         const blockId = `plantuml-diagram-${Math.random().toString(36).substring(2, 9)}`;
                         plantUmlBlocks.push({ id: blockId, content: diagramText });
@@ -180,15 +211,26 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                 }
             };
 
-            const doc = asciidoctor.load(rewrittenContent, options);
-            const blocks = doc.findBy((b: any) => typeof b.getLineNumber() !== 'undefined');
-            blocks.forEach((block: any) => {
-                block.setId(`adoc-source-line-${block.getLineNumber()}`);
-            });
-            const html = doc.convert() as string;
+            // Yield to main thread before heavy processing
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (isCancelled) return;
 
-            // Sanitize the HTML to prevent XSS
-            const sanitizedHtml = DOMPurify.sanitize(html);
+            const html = await new Promise<string>((resolve) => {
+                const doc = asciidoctor.load(rewrittenContent, options);
+                const blocks = doc.findBy((b: any) => typeof b.getLineNumber() !== 'undefined');
+                blocks.forEach((block: any) => {
+                    block.setId(`adoc-source-line-${block.getLineNumber()}`);
+                });
+                resolve(doc.convert() as string);
+            });
+
+            if (isCancelled) return;
+
+            // Sanitize the HTML to prevent XSS (can also be slow for huge files)
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (isCancelled) return;
+
+            const sanitizedHtml = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
 
             if (!isCancelled) {
                 setHtmlContent(sanitizedHtml);
@@ -251,16 +293,18 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                 const href = anchor.getAttribute("href");
                 if (href && !href.startsWith("http") && !href.startsWith("#")) {
                     const finalPath = resolvePath(filePath, href);
-                    let newHref = "#" + finalPath;
-                    try {
-                        if (document.referrer) {
-                            const url = new URL(document.referrer);
-                            url.searchParams.set("path", finalPath);
-                            newHref = url.toString();
-                        }
-                    } catch (e) {}
-                    anchor.setAttribute("href", newHref);
-                    anchor.setAttribute("data-internal-path", finalPath);
+                    if (finalPath) {
+                        let newHref = "#" + finalPath;
+                        try {
+                            if (document.referrer) {
+                                const url = new URL(document.referrer);
+                                url.searchParams.set("path", finalPath);
+                                newHref = url.toString();
+                            }
+                        } catch (e) {}
+                        anchor.setAttribute("href", newHref);
+                        anchor.setAttribute("data-internal-path", finalPath);
+                    }
                 }
             });
 
@@ -275,6 +319,9 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                         contentRef.current?.querySelectorAll('.visual-diff-deleted-marker').forEach(e => e.remove());
                         contentRef.current?.querySelectorAll('.visual-diff-added').forEach(e => e.classList.remove('visual-diff-added'));
                         contentRef.current?.querySelectorAll('.visual-diff-changed').forEach(e => e.classList.remove('visual-diff-changed'));
+                        contentRef.current?.querySelectorAll('.visual-diff-sr-text').forEach(e => e.remove());
+
+                        const srOnlyStyle = "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;";
 
                         let i = 0;
                         while (i < changes.length) {
@@ -290,6 +337,11 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                                         const elem = document.getElementById(`adoc-source-line-${targetLine}`);
                                         if (elem) {
                                             elem.classList.add("visual-diff-changed");
+                                            const srSpan = document.createElement("span");
+                                            srSpan.className = "visual-diff-sr-text";
+                                            srSpan.style.cssText = srOnlyStyle;
+                                            srSpan.innerText = "Changed line: ";
+                                            elem.insertBefore(srSpan, elem.firstChild);
                                         }
                                     }
                                     newLineNum += nextCount;
@@ -305,7 +357,7 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                                     if (elem && elem.parentNode) {
                                         const marker = document.createElement("div");
                                         marker.className = "visual-diff-deleted-marker";
-                                        marker.innerHTML = `<span aria-hidden="true" class="left-icon flex-noshrink fabric-icon ms-Icon--Cancel medium"></span>`;
+                                        marker.innerHTML = `<span aria-hidden="true" class="left-icon flex-noshrink fabric-icon ms-Icon--Cancel medium"></span><span class="visual-diff-sr-text" style="${srOnlyStyle}">Deleted line here</span>`;
                                         elem.parentNode.insertBefore(marker, elem);
                                     }
                                 }
@@ -317,6 +369,11 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                                         const elem = document.getElementById(`adoc-source-line-${targetLine}`);
                                         if (elem) {
                                             elem.classList.add("visual-diff-changed");
+                                            const srSpan = document.createElement("span");
+                                            srSpan.className = "visual-diff-sr-text";
+                                            srSpan.style.cssText = srOnlyStyle;
+                                            srSpan.innerText = "Changed line: ";
+                                            elem.insertBefore(srSpan, elem.firstChild);
                                         }
                                     }
                                     newLineNum += count;
@@ -329,6 +386,11 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
                                         const elem = document.getElementById(`adoc-source-line-${targetLine}`);
                                         if (elem) {
                                             elem.classList.add("visual-diff-added");
+                                            const srSpan = document.createElement("span");
+                                            srSpan.className = "visual-diff-sr-text";
+                                            srSpan.style.cssText = srOnlyStyle;
+                                            srSpan.innerText = "Added line: ";
+                                            elem.insertBefore(srSpan, elem.firstChild);
                                         }
                                     }
                                     newLineNum += count;
@@ -369,4 +431,4 @@ export const AsciiDocRenderer: React.FC<AsciiDocRendererProps> = ({ content, pre
             />
         </div>
     );
-};
+});

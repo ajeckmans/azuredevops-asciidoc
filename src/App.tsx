@@ -9,6 +9,7 @@ import { Card } from "azure-devops-ui/Card";
 import { DevOpsService } from "./services/DevOpsService";
 import { FileTree } from "./components/FileTree";
 import { AsciiDocRenderer } from "./components/AsciiDocRenderer";
+import { DiscussionThread } from "./components/DiscussionThread";
 
 const App: React.FC = () => {
     const [files, setFiles] = React.useState<any[]>([]);
@@ -19,6 +20,19 @@ const App: React.FC = () => {
     const [loading, setLoading] = React.useState(true);
     const [addingCommentPath, setAddingCommentPath] = React.useState<string | null>(null);
     const [replyingToThread, setReplyingToThread] = React.useState<number | null>(null);
+    const [isSubmittingComment, setIsSubmittingComment] = React.useState(false);
+    const [submittingReplyId, setSubmittingReplyId] = React.useState<number | null>(null);
+
+    const currentUserInitials = React.useMemo(() => {
+        try {
+            const user = SDK.getUser();
+            if (user && user.displayName) {
+                const parts = user.displayName.split(" ");
+                return parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : user.displayName.substring(0, 2).toUpperCase();
+            }
+        } catch (e) { }
+        return "U";
+    }, []);
 
     const loadThreads = async (repoId: string, project: string) => {
         try {
@@ -45,7 +59,9 @@ const App: React.FC = () => {
                     if (hash && hash.startsWith("path=")) {
                         defaultPath = decodeURIComponent(hash.substring(5));
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.warn("Failed to get navigation hash:", e);
+                }
 
                 if (defaultPath) {
                     setSelectedFile(defaultPath);
@@ -73,7 +89,8 @@ const App: React.FC = () => {
         init();
     }, []);
 
-    const handleFileSelected = async (path: string) => {
+    // ⚡ Bolt: Memoize event handlers to maintain stable references for React.memo child components
+    const handleFileSelected = React.useCallback(async (path: string) => {
         if (selectedFile !== path) {
             setSelectedFile(path);
             setAddingCommentPath(null);
@@ -94,34 +111,45 @@ const App: React.FC = () => {
                 setPreviousFileContent("");
             }
         }
-    };
+    }, [selectedFile]);
 
-    const handleAddComment = (path: string) => {
+    const handleAddComment = React.useCallback((path: string) => {
         handleFileSelected(path);
         setAddingCommentPath(path);
-    };
+    }, [handleFileSelected]);
 
     const handleCommentSubmit = async (filePath: string, comment: string) => {
         try {
+            setIsSubmittingComment(true);
             const repoId = await DevOpsService.getRepositoryId();
             const project = await DevOpsService.getProjectName();
             await DevOpsService.createThread(repoId, project, filePath, comment);
             await loadThreads(repoId, project);
+            setAddingCommentPath(null);
         } catch (err) {
             console.error("Error creating comment thread:", err);
             alert("Failed to add comment.");
+        } finally {
+            setIsSubmittingComment(false);
         }
     };
 
     const handleReplySubmit = async (threadId: number, comment: string) => {
         try {
+            setSubmittingReplyId(threadId);
             const repoId = await DevOpsService.getRepositoryId();
             const project = await DevOpsService.getProjectName();
             await DevOpsService.createComment(repoId, project, threadId, comment);
             await loadThreads(repoId, project);
+            const input = document.getElementById(`reply-box-${threadId}`) as HTMLInputElement;
+            if (input) {
+                input.value = "";
+            }
         } catch (err) {
             console.error("Error replying to thread:", err);
             alert("Failed to add reply.");
+        } finally {
+            setSubmittingReplyId(null);
         }
     };
 
@@ -173,136 +201,13 @@ const App: React.FC = () => {
                             <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
                                 <div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
                                     {fileThreads.map(thread => (
-                                        <Card key={thread.id} className="margin-bottom-16 flex-column depth-4">
-                                            <div style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column" }}>
-                                                <div className="repos-monaco-discussion-host repos-editor-discussion-host flex-grow">
-                                                <div className="flex-column rhythm-vertical-8">
-                                                    <div className="repos-editor-discussion">
-                                                        <div className="flex-grow repos-discussion-thread flex-column flex-grow scroll-hidden">
-                                                            {thread.comments.map((comment: any, index: number) => {
-                                                                const isFirst = index === 0;
-                                                                const hasReplies = thread.comments.length > 1 && isFirst;
-                                                                
-                                                                let initials = "U";
-                                                                if (comment.author?.displayName) {
-                                                                    const parts = comment.author.displayName.split(" ");
-                                                                    initials = parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : comment.author.displayName.substring(0, 2).toUpperCase();
-                                                                }
-                                                                
-                                                                let timeAgo = "Just now";
-                                                                if (comment.publishedDate) {
-                                                                    const diffInHours = Math.floor((new Date().getTime() - new Date(comment.publishedDate).getTime()) / (1000 * 60 * 60));
-                                                                    timeAgo = diffInHours < 1 ? "Just now" : (diffInHours < 24 ? `${diffInHours}h ago` : `${Math.floor(diffInHours / 24)}d ago`);
-                                                                }
-
-                                                                return (
-                                                                    <div key={comment.id} id={`comment-${comment.id}`} className="repos-comment-viewer" style={{ marginLeft: isFirst ? "0" : "32px", marginTop: isFirst ? "0" : "16px" }}>
-                                                                        <div className={`repos-discussion-comment flex-column true ${hasReplies ? 'has-replies' : ''}`}>
-                                                                            <div className="flex-column">
-                                                                                <div className="flex-row">
-                                                                                    <div>
-                                                                                        <div className="bolt-coin flex-noshrink repos-comment-header-persona size24 cursor-pointer" tabIndex={0} role="button">
-                                                                                            <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "bold" }}>
-                                                                                                {initials}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div className="repos-comment-editor-fit flex-column flex-grow scroll-hidden padding-left-8">
-                                                                                        <div className="repos-discussion-comment-header flex-row flex-grow flex-center rhythm-horizontal-4 margin-bottom-8">
-                                                                                            <div className="scroll-hidden flex-row flex-center">
-                                                                                                <span className="font-weight-semibold padding-right-8 text-ellipsis">{comment.author?.displayName || "Unknown User"}</span>
-                                                                                                <div className="flex-row flex-center rhythm-horizontal-4 margin-left-4">
-                                                                                                    <span className="text-ellipsis">
-                                                                                                        <time className="body-s secondary-text margin-right-4 bolt-time-item white-space-nowrap">{timeAgo}</time>
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <div className="flex-row flex-grow flex-noshrink justify-end flex-center">
-                                                                                                <button className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
-                                                                                                    <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--Link medium"></span></span>
-                                                                                                </button>
-                                                                                                {isFirst && (
-                                                                                                    <>
-                                                                                                        <button className="comment-viewers bolt-button bolt-icon-button enabled subtle icon-only bolt-focus-treatment" role="menuitem" tabIndex={0} type="button">
-                                                                                                            <span className="fluent-icons-enabled"><span aria-hidden="true" className="left-icon flex-noshrink fabric-icon ms-Icon--PageCheckedin medium"></span></span>
-                                                                                                        </button>
-                                                                                                        <div className="bolt-dropdown-expandable bolt-expandable-button inline-flex-row">
-                                                                                                            <button aria-expanded="false" aria-haspopup="true" className="bolt-button enabled subtle bolt-focus-treatment" role="button" tabIndex={0} type="button">
-                                                                                                                <div className="bolt-dropdown-expandable-button-label justify-start flex-grow text-ellipsis">Active</div>
-                                                                                                                <span className="fluent-icons-enabled"><span aria-hidden="true" className="icon-right font-weight-normal flex-noshrink fabric-icon ms-Icon--ChevronDownMed small"></span></span>
-                                                                                                            </button>
-                                                                                                        </div>
-                                                                                                    </>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        <div className="markdown-content markdown-editor-preview repos-comment-editor-max-width markdown-preview-checkbox-indent">
-                                                                                            <p>{comment.content}</p>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                            
-                                                            <div className="repos-discussion-thread-reply flex-column" style={{ marginLeft: "32px", marginTop: "16px" }}>
-                                                                <div className="flex-row flex-grow rhythm-horizontal-8">
-                                                                    <div>
-                                                                        <div className="bolt-coin flex-noshrink margin-right-4 margin-top-4 size24 cursor-pointer" tabIndex={0} role="button">
-                                                                            <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "bold" }}>
-                                                                                AJ
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex-row flex-grow flex-center rhythm-horizontal-8 repos-comment-editor-max-width">
-                                                                        <div className="flex-column flex-grow padding-vertical-4">
-                                                                            <div className="bolt-textfield flex-row flex-center focus-treatment">
-                                                                                <input 
-                                                                                    id={`reply-box-${thread.id}`}
-                                                                                    className={`threadId-${thread.id} bolt-textfield-input flex-grow`}
-                                                                                    style={{ backgroundColor: "transparent", color: "var(--text-primary-color, inherit)" }}
-                                                                                    autoComplete="off" 
-                                                                                    placeholder="Write a reply..." 
-                                                                                    tabIndex={0} 
-                                                                                    onKeyDown={(e) => {
-                                                                                        if (e.key === 'Enter') {
-                                                                                            const val = (e.target as HTMLInputElement).value;
-                                                                                            if (val) {
-                                                                                                handleReplySubmit(thread.id, val);
-                                                                                                (e.target as HTMLInputElement).value = "";
-                                                                                            }
-                                                                                        }
-                                                                                    }}
-                                                                                />
-                                                                            </div>
-                                                                        </div>
-                                                                        <button 
-                                                                            className="bolt-button enabled bolt-focus-treatment" 
-                                                                            role="button" 
-                                                                            tabIndex={0} 
-                                                                            type="button"
-                                                                            style={{ background: "rgba(0,0,0,0.06)", border: "none" }}
-                                                                            onClick={() => {
-                                                                                const input = document.getElementById(`reply-box-${thread.id}`) as HTMLInputElement;
-                                                                                if (input && input.value) {
-                                                                                    handleReplySubmit(thread.id, input.value);
-                                                                                    input.value = "";
-                                                                                }
-                                                                            }}
-                                                                        >
-                                                                            Resolve
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Card>
+                                        <DiscussionThread 
+                                            key={thread.id}
+                                            thread={thread}
+                                            currentUserInitials={currentUserInitials}
+                                            submittingReplyId={submittingReplyId}
+                                            onReplySubmit={handleReplySubmit}
+                                        />
                                     ))}
 
                                     {addingCommentPath === selectedFile && (
@@ -314,14 +219,23 @@ const App: React.FC = () => {
                                                         <div className="flex-grow repos-discussion-thread flex-column flex-grow scroll-hidden">
                                                             <div className="repos-discussion-thread-reply flex-column" style={{ border: "none" }}>
                                                                 <div className="flex-row flex-grow rhythm-horizontal-8 padding-8">
+                                                                    <div>
+                                                                        <div className="bolt-coin flex-noshrink margin-right-4 margin-top-4 size24" aria-hidden="true">
+                                                                            <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#107c41", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "bold" }}>
+                                                                                {currentUserInitials}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
                                                                     <div className="flex-row flex-grow flex-center rhythm-horizontal-8 repos-comment-editor-max-width">
                                                                         <div className="flex-column flex-grow padding-vertical-4">
                                                                             <div className="bolt-textfield flex-row flex-center focus-treatment">
                                                                                 <textarea 
                                                                                     id="pr-comment-box"
                                                                                     className="bolt-textfield-input flex-grow"
-                                                                                    style={{ minHeight: "80px", resize: "vertical", backgroundColor: "transparent", color: "var(--text-primary-color, inherit)" }}
+                                                                                    style={{ minHeight: "80px", resize: "vertical", backgroundColor: "transparent", color: "var(--text-primary-color, inherit)", opacity: isSubmittingComment ? 0.6 : 1 }}
                                                                                     placeholder="Add a new comment..."
+                                                                                    aria-label="Add a new comment"
+                                                                                    disabled={isSubmittingComment}
                                                                                     autoFocus
                                                                                 />
                                                                             </div>
@@ -332,21 +246,24 @@ const App: React.FC = () => {
                                                                     <div style={{ display: "flex", gap: "8px" }}>
                                                                         <button 
                                                                             className="bolt-button enabled subtle bolt-focus-treatment"
+                                                                            disabled={isSubmittingComment}
+                                                                            style={{ opacity: isSubmittingComment ? 0.6 : 1, cursor: isSubmittingComment ? "not-allowed" : "pointer" }}
                                                                             onClick={() => setAddingCommentPath(null)} 
                                                                         >
                                                                             Cancel
                                                                         </button>
                                                                         <button 
                                                                             className="bolt-button enabled primary bolt-focus-treatment"
+                                                                            disabled={isSubmittingComment}
+                                                                            style={{ opacity: isSubmittingComment ? 0.6 : 1, cursor: isSubmittingComment ? "not-allowed" : "pointer" }}
                                                                             onClick={() => {
                                                                                 const val = (document.getElementById("pr-comment-box") as HTMLTextAreaElement).value;
                                                                                 if (val) {
                                                                                     handleCommentSubmit(selectedFile, val);
-                                                                                    setAddingCommentPath(null);
                                                                                 }
                                                                             }} 
                                                                         >
-                                                                            Comment
+                                                                            {isSubmittingComment ? "Commenting..." : "Comment"}
                                                                         </button>
                                                                     </div>
                                                                 </div>
