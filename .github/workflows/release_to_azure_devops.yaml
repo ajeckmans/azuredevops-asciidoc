@@ -91,7 +91,7 @@ jobs:
       - name: Publish Extension
         if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
         run: |
-          tfx extension publish --vsix dist/ajeckmans.${{ env.EXT_ID }}-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
+          tfx extension publish --vsix dist/ajeckmans.${{ env.EXT_ID }}-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --no-wait-validation
 
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
