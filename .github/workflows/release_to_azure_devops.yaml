@@ -91,7 +91,44 @@ jobs:
       - name: Publish Extension
         if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
         run: |
-          tfx extension publish --vsix dist/ajeckmans.${{ env.EXT_ID }}-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }}
+          tfx extension publish --vsix dist/ajeckmans.${{ env.EXT_ID }}-${{ env.EXT_VERSION }}.vsix --token ${{ secrets.AZURE_DEVOPS_PAT }} --no-wait-validation
+
+      - name: Wait for Marketplace Validation
+        if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+        run: |
+          echo "Waiting for extension validation in Marketplace..."
+          # Poll every 15 seconds for up to 15 minutes (60 attempts)
+          for i in {1..60}; do
+            RAW_OUTPUT=$(tfx extension isvalid \
+              --publisher ajeckmans \
+              --extension-id "${{ env.EXT_ID }}" \
+              --version "${{ env.EXT_VERSION }}" \
+              --service-url "https://marketplace.visualstudio.com/" \
+              --token "${{ secrets.AZURE_DEVOPS_PAT }}" \
+              --json 2>/dev/null || true)
+
+            STATUS=$(echo "$RAW_OUTPUT" | jq -r '.status // empty' 2>/dev/null || true)
+
+            if [ "$STATUS" = "success" ]; then
+              echo "Extension successfully validated and published!"
+              exit 0
+            elif [ "$STATUS" = "pending" ]; then
+              echo "Validation pending in Marketplace (attempt $i/60)... waiting 15s"
+            elif [ "$STATUS" = "error" ]; then
+              MSG=$(echo "$RAW_OUTPUT" | jq -r '.message // empty' 2>/dev/null || true)
+              if [ -n "$MSG" ]; then
+                echo "Marketplace validation failed: $MSG"
+                exit 1
+              fi
+              echo "Validation status check error, retrying in 15s (attempt $i/60)..."
+            else
+              echo "Waiting for version ${{ env.EXT_VERSION }} to appear in Marketplace (attempt $i/60)..."
+            fi
+            sleep 15
+          done
+
+          echo "Timed out waiting for Marketplace validation after 15 minutes."
+          exit 1
 
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
