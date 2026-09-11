@@ -32,9 +32,14 @@ export interface AsciiDocRendererProps {
 }
 
 function resolvePath(currentPath: string, target: string): string | null {
-    if (target.startsWith('/')) return target;
-    const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
-    const parts = (dir + '/' + target).split('/');
+    let basePath: string;
+    if (target.startsWith('/')) {
+        basePath = target;
+    } else {
+        const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+        basePath = dir + '/' + target;
+    }
+    const parts = basePath.split('/');
     const stack: string[] = [];
     for (const part of parts) {
         if (part === '..') {
