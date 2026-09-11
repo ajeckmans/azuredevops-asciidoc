@@ -63,8 +63,8 @@ describe('HubApp', () => {
         (DevOpsService.getRepositoryId as jest.Mock).mockResolvedValue('repo-1');
         (DevOpsService.getProjectName as jest.Mock).mockResolvedValue('proj-1');
         (DevOpsService.getRepositories as jest.Mock).mockResolvedValue([{ id: 'repo-1', name: 'Repo 1', defaultBranch: 'main' }]);
-        (DevOpsService.getGlobalRepoState as jest.Mock).mockResolvedValue(null);
-        (DevOpsService.setGlobalRepoState as jest.Mock).mockResolvedValue(true);
+        (DevOpsService.getRepoState as jest.Mock).mockResolvedValue(null);
+        (DevOpsService.setRepoState as jest.Mock).mockResolvedValue(true);
         (DevOpsService.getRepoFileContent as jest.Mock).mockResolvedValue('Hub Content');
         (DevOpsService.getRepoAsciiDocFiles as jest.Mock).mockResolvedValue([{ path: '/docs/test.adoc' }]);
         (DevOpsService.getFileContent as jest.Mock).mockResolvedValue('Hub Content');
@@ -88,7 +88,7 @@ describe('HubApp', () => {
         });
     });
 
-    it('handles global state and repo selection', async () => {
+    it('handles repo state and repo selection', async () => {
         // Set up mock to simulate hash containing a path and repo
         (SDK.getService as jest.Mock).mockResolvedValue({
             getHash: jest.fn().mockResolvedValue(""),
@@ -102,6 +102,28 @@ describe('HubApp', () => {
             expect(DevOpsService.getRepoFileContent).toHaveBeenCalledWith('repo-1', 'proj-1', '/docs/test.adoc');
             expect(screen.getByTestId('mock-renderer')).toBeInTheDocument();
         });
+    });
+
+    it('uses cached repo state and skips scanning when cache is fresh', async () => {
+        (DevOpsService.getRepoState as jest.Mock).mockResolvedValue({
+            lastScanned: Date.now(),
+            hasAsciidoc: false
+        });
+        (SDK.getService as jest.Mock).mockResolvedValue({
+            getHash: jest.fn().mockResolvedValue(""),
+            getQueryParams: jest.fn().mockResolvedValue({}),
+            setQueryParams: jest.fn()
+        });
+
+        render(<HubApp />);
+
+        await waitFor(() => {
+            expect(screen.getByText('No AsciiDoc files found in any repositories.')).toBeInTheDocument();
+        });
+
+        // Since cache is fresh, getRepoAsciiDocFiles should not be called for scanning
+        expect(DevOpsService.getRepoAsciiDocFiles).not.toHaveBeenCalled();
+        expect(DevOpsService.setRepoState).not.toHaveBeenCalled();
     });
 
     it('handles file tree node selection', async () => {

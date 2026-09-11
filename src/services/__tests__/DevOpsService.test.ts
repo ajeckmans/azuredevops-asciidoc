@@ -132,6 +132,20 @@ describe("DevOpsService", () => {
             const content = await DevOpsService.getPreviousFileContent("repo-1", "proj-1", "/docs/test.adoc");
             expect(content).toBe("");
         });
+
+        it("should return empty string and suppress warning for TF401174 (new file)", async () => {
+            (SDK.getConfiguration as jest.Mock).mockReturnValue({ pullRequestId: 123 });
+            mockGitClient.getPullRequestById.mockResolvedValue({
+                lastMergeTargetCommit: { commitId: "target-commit-123" }
+            });
+            mockGitClient.getItemText.mockRejectedValue(new Error("TF401174: The item does not exist at the specified commit"));
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const content = await DevOpsService.getPreviousFileContent("repo-1", "proj-1", "/docs/new.adoc");
+            expect(content).toBe("");
+            expect(warnSpy).not.toHaveBeenCalled();
+            warnSpy.mockRestore();
+        });
     });
 
     describe("getAsciiDocFiles", () => {
@@ -207,6 +221,35 @@ describe("DevOpsService", () => {
             (SDK.getConfiguration as jest.Mock).mockReturnValue({ pullRequestId: 123 });
             await DevOpsService.createComment("repo-1", "proj-1", 10, "reply");
             expect(mockGitClient.createComment).toHaveBeenCalled();
+        });
+    });
+
+    describe("Repo State Methods", () => {
+        it("should get repo state from dataManager", async () => {
+            mockDataManager.getValue.mockResolvedValue({ lastScanned: 12345, hasAsciidoc: true });
+            const state = await DevOpsService.getRepoState("repo-1");
+            expect(mockDataManager.getValue).toHaveBeenCalledWith("asciidoc-repo-state-repo-1", { scopeType: "Default" });
+            expect(state).toEqual({ lastScanned: 12345, hasAsciidoc: true });
+        });
+
+        it("should return null if getRepoState fails", async () => {
+            mockDataManager.getValue.mockRejectedValue(new Error("Network error"));
+            const state = await DevOpsService.getRepoState("repo-1");
+            expect(state).toBeNull();
+        });
+
+        it("should set repo state in dataManager", async () => {
+            mockDataManager.setValue.mockResolvedValue(true);
+            await DevOpsService.setRepoState("repo-1", { lastScanned: 12345, hasAsciidoc: true });
+            expect(mockDataManager.setValue).toHaveBeenCalledWith("asciidoc-repo-state-repo-1", { lastScanned: 12345, hasAsciidoc: true }, { scopeType: "Default" });
+        });
+
+        it("should handle error gracefully in setRepoState", async () => {
+            mockDataManager.setValue.mockRejectedValue(new Error("Failed"));
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+            await DevOpsService.setRepoState("repo-1", { lastScanned: 12345 });
+            expect(warnSpy).toHaveBeenCalled();
+            warnSpy.mockRestore();
         });
     });
 });
